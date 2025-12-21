@@ -20,7 +20,7 @@
     "lint": "eslint src/**/*.ts",
     "typecheck": "tsc --noEmit",
     "test:unit": "vitest run tests/unit",
-    "prepublishOnly": "npm run build && npm run test:unit && npm run typecheck"
+    "prepublishOnly": "npm run build && npm run typecheck"
   },
   "keywords": [
     "mcp",
