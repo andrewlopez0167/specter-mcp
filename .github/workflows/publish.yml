@@ -8,6 +8,7 @@ jobs:
   publish:
     runs-on: ubuntu-latest
 
+    # Required for npm Trusted Publishing (OIDC)
     permissions:
       contents: read
       id-token: write
@@ -35,7 +36,7 @@ jobs:
       - name: Build
         run: npm run build
 
+      # Uses npm Trusted Publishing (OIDC) - no NPM_TOKEN needed
+      # Package must be linked to this repo on npmjs.com
       - name: Publish to npm with provenance
         run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

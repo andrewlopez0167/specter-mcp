@@ -63,3 +63,22 @@
 - `docs:` - Documentation changes
 - `test:` - Test changes
 - `ci:` - CI/CD changes
+
+### npm Trusted Publishing (OIDC)
+
+This repo uses npm Trusted Publishing - no `NPM_TOKEN` secret needed. Authentication happens via OIDC between GitHub Actions and npm.
+
+**One-time setup on npmjs.com:**
+1. Go to https://www.npmjs.com/package/specter-mcp/access
+2. Under "Publishing access", click "Add new configuration"
+3. Configure the GitHub Actions environment:
+   - Repository: `abd3lraouf/specter-mcp`
+   - Workflow: `release.yml` (or `publish.yml`)
+   - Environment: leave empty (or use `production` if configured)
+4. Save the configuration
+
+**How it works:**
+- GitHub Actions requests an OIDC token from GitHub
+- npm verifies the token matches the configured repository/workflow
+- Publish succeeds without any stored secrets
+- All packages get automatic provenance attestation

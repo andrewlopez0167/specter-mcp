@@ -47,6 +47,11 @@
     "url": "https://github.com/abd3lraouf/specter-mcp/issues"
   },
   "homepage": "https://github.com/abd3lraouf/specter-mcp#readme",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "registry": "https://registry.npmjs.org"
+  },
   "engines": {
     "node": ">=20.0.0"
   },
