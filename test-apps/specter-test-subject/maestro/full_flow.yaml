@@ -1,0 +1,55 @@
+appId: com.specter.testsubject
+name: Full E2E Flow Test
+---
+# Complete E2E test covering both Counter and Form features
+- launchApp
+
+# ======== COUNTER TESTS ========
+- assertVisible: "Specter Counter"
+
+# Basic counter operations
+- tapOn:
+    id: "btn_increment"
+- tapOn:
+    id: "btn_increment"
+- tapOn:
+    id: "btn_increment"
+- assertVisible: "3"
+
+- tapOn:
+    id: "btn_decrement"
+- assertVisible: "2"
+
+- tapOn:
+    id: "btn_reset"
+- assertVisible: "0"
+
+# ======== FORM TESTS ========
+# Navigate to Form tab
+- tapOn: "Form"
+- assertVisible: "Registration Form"
+
+# Fill valid form
+- tapOn:
+    id: "input_email"
+- inputText: "test@specter.com"
+
+- tapOn:
+    id: "input_username"
+- inputText: "specteruser"
+
+- tapOn:
+    id: "input_password"
+- inputText: "SecurePass1"
+
+# Submit
+- tapOn:
+    id: "btn_submit"
+- assertVisible: "Form submitted successfully!"
+
+# ======== NAVIGATION TEST ========
+# Go back to Counter
+- tapOn: "Counter"
+- assertVisible: "Specter Counter"
+# Counter should have reset (new session)
+- assertVisible: "0"

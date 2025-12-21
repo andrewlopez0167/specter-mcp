@@ -1,0 +1,53 @@
+appId: com.specter.testsubject
+name: Counter Flow Test
+---
+# Counter UI Tests
+- launchApp
+
+# Verify Counter tab is displayed
+- assertVisible: "Specter Counter"
+
+# Test increment button
+- tapOn:
+    id: "btn_increment"
+- assertVisible: "1"
+
+# Tap increment again
+- tapOn:
+    id: "btn_increment"
+- assertVisible: "2"
+
+# Test decrement button
+- tapOn:
+    id: "btn_decrement"
+- assertVisible: "1"
+
+# Test reset button
+- tapOn:
+    id: "btn_reset"
+- assertVisible: "0"
+
+# Multiple increments
+- tapOn:
+    id: "btn_increment"
+- tapOn:
+    id: "btn_increment"
+- tapOn:
+    id: "btn_increment"
+- assertVisible: "3"
+
+# Multiple decrements to negative
+- tapOn:
+    id: "btn_decrement"
+- tapOn:
+    id: "btn_decrement"
+- tapOn:
+    id: "btn_decrement"
+- tapOn:
+    id: "btn_decrement"
+- assertVisible: "-1"
+
+# Reset to zero
+- tapOn:
+    id: "btn_reset"
+- assertVisible: "0"

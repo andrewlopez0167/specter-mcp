@@ -1,0 +1,24 @@
+# Source files (dist is included)
+src/
+tests/
+test-apps/
+
+# Config files
+.claude/
+.specify/
+specs/
+coverage/
+*.config.ts
+*.config.js
+tsconfig.json
+eslint.config.js
+
+# Development files
+.git/
+.gitignore
+CLAUDE.md
+CONTRIBUTING.md
+CHANGELOG.md
+
+# Build artifacts
+*.tsbuildinfo

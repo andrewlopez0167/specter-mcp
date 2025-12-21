@@ -1,0 +1,50 @@
+Incident Identifier: 12345678-ABCD-EF01-2345-6789ABCDEF01
+CrashReporter Key:   device-udid
+Hardware Model:      iPhone14,5
+Process:             TestApp [1234]
+Path:                /var/containers/Bundle/Application/UUID/TestApp.app/TestApp
+Identifier:          com.example.testapp
+Version:             1.0.0 (1)
+Code Type:           ARM-64
+Role:                Foreground
+Parent Process:      launchd [1]
+
+Date/Time:           2025-01-15 14:30:00.000 +0000
+Launch Time:         2025-01-15 14:25:00.000 +0000
+OS Version:          iOS 17.2 (21C62)
+Report Version:      104
+
+Exception Type:  EXC_BAD_ACCESS (SIGSEGV)
+Exception Subtype: KERN_INVALID_ADDRESS at 0x0000000000000000
+Exception Codes: 0x0000000000000001, 0x0000000000000000
+Termination Reason: SIGNAL 11 Segmentation fault: 11
+Terminating Process: exc handler [1234]
+
+Triggered by Thread:  0
+
+Thread 0 name:  main
+Thread 0 Crashed:
+0   TestApp                       0x0000000100001250 _$s7TestApp11ViewControllerC10loadViewyyF + 28
+1   TestApp                       0x0000000100001020 _$s7TestApp11ViewControllerC11viewDidLoadyyF + 32
+2   UIKitCore                     0x0000000180100100 -[UIViewController _sendViewDidLoadWithAppearanceProxyObjectTaggingEnabled] + 100
+3   UIKitCore                     0x0000000180200200 -[UIViewController loadViewIfRequired] + 200
+4   UIKitCore                     0x0000000180300300 -[UIViewController view] + 50
+5   UIKitCore                     0x0000000180400400 -[UIWindow _setRootViewController:] + 150
+
+Thread 1 name:  com.apple.uikit.eventfetch-thread
+Thread 1:
+0   libsystem_kernel.dylib        0x00000001a0001008 mach_msg_trap + 8
+
+Thread 0 crashed with ARM Thread State (64-bit):
+    x0: 0x0000000000000000   x1: 0x0000000100001234
+    x2: 0x0000000000000000   x3: 0x0000000000000001
+   x28: 0x0000000000000000   fp: 0x000000016f8a3890
+    lr: 0x0000000100001020   sp: 0x000000016f8a3880
+    pc: 0x0000000100001250 cpsr: 0x60001000
+
+Binary Images:
+0x100000000 - 0x100100000 TestApp arm64  <a1b2c3d4e5f67890abcdef1234567890> /var/containers/Bundle/Application/UUID/TestApp.app/TestApp
+0x180000000 - 0x181000000 UIKitCore arm64  <11111111222233334444555555555555> /System/Library/PrivateFrameworks/UIKitCore.framework/UIKitCore
+0x1a0000000 - 0x1a0100000 libsystem_kernel.dylib arm64  <aaaabbbbccccddddeeeeffffgggghhhh> /usr/lib/system/libsystem_kernel.dylib
+
+EOF

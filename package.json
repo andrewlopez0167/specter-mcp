@@ -1,0 +1,74 @@
+{
+  "name": "specter-mcp",
+  "version": "1.0.0",
+  "description": "KMM Diagnostic & Execution Engine - MCP server for AI agents working with Kotlin Multiplatform Mobile projects",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "specter-mcp": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "vitest run --config vitest.config.e2e.ts",
+    "lint": "eslint src/**/*.ts",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build && npm run test && npm run typecheck"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "claude",
+    "anthropic",
+    "kmm",
+    "kotlin-multiplatform",
+    "android",
+    "ios",
+    "mobile",
+    "debugging",
+    "testing",
+    "automation",
+    "ai-agent",
+    "developer-tools"
+  ],
+  "author": "Specter MCP Contributors",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/abd3lraouf/specter-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/abd3lraouf/specter-mcp/issues"
+  },
+  "homepage": "https://github.com/abd3lraouf/specter-mcp#readme",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.25.1",
+    "sharp": "^0.34.5",
+    "xml2js": "^0.6.2"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "@types/node": "^25.0.3",
+    "@types/sharp": "^0.31.1",
+    "@types/xml2js": "^0.4.14",
+    "@vitest/coverage-v8": "^4.0.16",
+    "eslint": "^9.39.2",
+    "globals": "^16.5.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.50.0",
+    "vitest": "^4.0.16"
+  }
+}

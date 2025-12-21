@@ -1,0 +1,41 @@
+{
+  "devices": {
+    "com.apple.CoreSimulator.SimRuntime.iOS-17-0": [
+      {
+        "udid": "ABCD1234-5678-EFGH-IJKL-MNOPQRSTUVWX",
+        "name": "iPhone 15 Pro",
+        "state": "Booted",
+        "isAvailable": true,
+        "deviceTypeIdentifier": "com.apple.CoreSimulator.SimDeviceType.iPhone-15-Pro"
+      },
+      {
+        "udid": "WXYZ9876-5432-DCBA-LKJI-HGFEDCBAMNOP",
+        "name": "iPhone 15",
+        "state": "Shutdown",
+        "isAvailable": true,
+        "deviceTypeIdentifier": "com.apple.CoreSimulator.SimDeviceType.iPhone-15"
+      }
+    ],
+    "com.apple.CoreSimulator.SimRuntime.iOS-16-4": [
+      {
+        "udid": "OLD-DEVICE-UUID-1234",
+        "name": "iPhone 14 Pro",
+        "state": "Shutdown",
+        "isAvailable": false,
+        "deviceTypeIdentifier": "com.apple.CoreSimulator.SimDeviceType.iPhone-14-Pro"
+      }
+    ]
+  },
+  "runtimes": [
+    {
+      "identifier": "com.apple.CoreSimulator.SimRuntime.iOS-17-0",
+      "name": "iOS 17.0",
+      "version": "17.0"
+    },
+    {
+      "identifier": "com.apple.CoreSimulator.SimRuntime.iOS-16-4",
+      "name": "iOS 16.4",
+      "version": "16.4"
+    }
+  ]
+}

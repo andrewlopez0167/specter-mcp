@@ -1,0 +1,85 @@
+{
+  "app_name": "TestApp",
+  "app_version": "1.0.0",
+  "bundle_id": "com.example.testapp",
+  "timestamp": "2025-01-15 14:30:00.000 +0000",
+  "incident_id": "ABC123-DEF456-GHI789",
+  "os_version": "iOS 17.2 (21C62)",
+  "hardware_model": "iPhone14,5",
+  "exception": {
+    "type": "EXC_BAD_ACCESS",
+    "codes": "KERN_INVALID_ADDRESS",
+    "signal": "SIGSEGV",
+    "subtype": "KERN_INVALID_ADDRESS at 0x0000000000000010"
+  },
+  "faulting_thread": 0,
+  "threads": [
+    {
+      "id": 0,
+      "name": "main",
+      "crashed": true,
+      "frames": [
+        {
+          "image_name": "TestApp",
+          "image_addr": "0x100000000",
+          "symbol": "_$s7TestApp11ViewControllerC10loadViewyyF",
+          "symbol_addr": "0x100001234",
+          "instruction_addr": "0x100001250"
+        },
+        {
+          "image_name": "TestApp",
+          "image_addr": "0x100000000",
+          "symbol": "_$s7TestApp11ViewControllerC11viewDidLoadyyF",
+          "symbol_addr": "0x100001000",
+          "instruction_addr": "0x100001020"
+        },
+        {
+          "image_name": "UIKitCore",
+          "image_addr": "0x180000000",
+          "symbol": "-[UIViewController _sendViewDidLoadWithAppearanceProxyObjectTaggingEnabled]",
+          "symbol_addr": "0x180100000",
+          "instruction_addr": "0x180100100"
+        },
+        {
+          "image_name": "UIKitCore",
+          "image_addr": "0x180000000",
+          "symbol": "-[UIViewController loadViewIfRequired]",
+          "symbol_addr": "0x180200000",
+          "instruction_addr": "0x180200200"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "com.apple.uikit.eventfetch-thread",
+      "crashed": false,
+      "frames": [
+        {
+          "image_name": "libsystem_kernel.dylib",
+          "image_addr": "0x1a0000000",
+          "symbol": "mach_msg_trap",
+          "symbol_addr": "0x1a0001000",
+          "instruction_addr": "0x1a0001008"
+        }
+      ]
+    }
+  ],
+  "binary_images": [
+    {
+      "name": "TestApp",
+      "arch": "arm64",
+      "uuid": "A1B2C3D4-E5F6-7890-ABCD-EF1234567890",
+      "base_addr": "0x100000000",
+      "end_addr": "0x100100000",
+      "path": "/var/containers/Bundle/Application/UUID/TestApp.app/TestApp"
+    },
+    {
+      "name": "UIKitCore",
+      "arch": "arm64",
+      "uuid": "11111111-2222-3333-4444-555555555555",
+      "base_addr": "0x180000000",
+      "end_addr": "0x181000000",
+      "path": "/System/Library/PrivateFrameworks/UIKitCore.framework/UIKitCore"
+    }
+  ]
+}
