@@ -48,3 +48,18 @@
 ### iOS Debugging
 - **Crash log analysis**: Parse .crash/.ips files, symbolicate with dSYM, detect crash patterns
 - **Xcode Instruments**: Out of scope - focus on functional debugging, not performance profiling
+
+## Release Workflow
+
+### Auto-release (recommended)
+1. Push commits with conventional prefixes (`feat:`, `fix:`, `chore:`)
+2. release-please will create a PR with version bump
+3. Merge the PR to create release and auto-publish to npm
+
+### Conventional Commit Prefixes
+- `feat:` - New feature (bumps minor version)
+- `fix:` - Bug fix (bumps patch version)
+- `chore:` - Maintenance tasks (no version bump)
+- `docs:` - Documentation changes
+- `test:` - Test changes
+- `ci:` - CI/CD changes
