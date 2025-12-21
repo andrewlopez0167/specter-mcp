@@ -28,7 +28,7 @@ Specter MCP enables AI agents to build, test, debug, and interact with Android a
 - **UI Automation** — Capture screenshots, UI hierarchies, and perform interactions
 - **Testing** — Run unit tests, Maestro E2E flows, and linters
 - **Environment Management** — List/boot devices, clean projects
-- **Crash Analysis** — Parse and analyze iOS crash logs with symbolication
+- **Crash Analysis** — Cross-platform crash analysis (iOS crash files + symbolication, Android logcat)
 - **Deep Linking** — Navigate apps via deep links with intent extras
 - **App State Inspection** — Read preferences, databases, and logs
 

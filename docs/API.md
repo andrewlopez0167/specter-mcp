@@ -27,7 +27,7 @@ Specter MCP provides 15 tools for AI agents to interact with Kotlin Multiplatfor
 | `list_devices` | Environment Management | List available devices (emulators, simulators, physical devices) |
 | `manage_env` | Environment Management | Manage device environment: boot, shutdown, or restart emulators and simulators |
 | `clean_project` | Environment Management | Clean project build caches, DerivedData, and other temporary files |
-| `analyze_crash` | Crash Analysis | Analyze iOS crash logs ( |
+| `analyze_crash` | Crash Analysis | Analyze crash logs and device logs for both Android and iOS |
 | `deep_link_navigate` | Navigation | Navigate to a specific screen in the app using a deep link or Universal Link |
 | `inspect_app_state` | Observability | Inspect app preferences (SharedPreferences/UserDefaults) and SQLite databases |
 | `inspect_logs` | Observability | Inspect device logs (Android logcat or iOS unified logs) |
@@ -211,17 +211,20 @@ Clean project build caches, DerivedData, and other temporary files. Helps resolv
 
 ### `analyze_crash`
 
-Analyze iOS crash logs (.ips or .crash files) to identify crash patterns, symbolicate stack traces, and provide root cause analysis with suggestions.
+Cross-platform crash analysis tool. For iOS, can analyze crash log files (.ips/.crash) with symbolication, or analyze live device logs via oslog. For Android, analyzes live device logs via logcat. Identifies crash patterns and provides root cause suggestions.
 
 #### Parameters
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `crashLogPath` | string | ✅ | Path to the crash log file (.ips or .crash) |
-| `dsymPath` | string | ❌ | Path to dSYM file or directory containing dSYMs (optional, will search common locations) |
-| `bundleId` | string | ❌ | Bundle ID of the crashed app (helps locate dSYM) |
-| `skipSymbolication` | boolean | ❌ | Skip symbolication for faster analysis (default: false) |
-| `includeRawLog` | boolean | ❌ | Include raw crash log in output (default: false) |
+| `platform` | enum: `android`, `ios` | ✅ | Target platform to analyze |
+| `appId` | string | ❌ | App ID (Android package name or iOS bundle ID) for live device log analysis |
+| `deviceId` | string | ❌ | Device ID for analysis (optional, uses first available device) |
+| `crashLogPath` | string | ❌ | Path to iOS crash log file (.ips or .crash) - iOS only, optional for live analysis |
+| `dsymPath` | string | ❌ | Path to dSYM file or directory - iOS only (optional, searches common locations) |
+| `timeRangeSeconds` | number | ❌ | Time range in seconds to search device logs (default: 300 = 5 minutes) |
+| `skipSymbolication` | boolean | ❌ | Skip symbolication for faster analysis - iOS only (default: false) |
+| `includeRawLog` | boolean | ❌ | Include raw log data in output (default: false) |
 
 ## Navigation
 
@@ -327,15 +330,28 @@ Inspect device logs (Android logcat or iOS unified logs). Can filter by app, log
 }
 ```
 
-### Analyzing a Crash Log
+### Analyzing a Crash (Android - live logs)
 
 ```json
 {
   "tool": "analyze_crash",
   "arguments": {
+    "platform": "android",
+    "appId": "com.example.app",
+    "timeRangeSeconds": 300
+  }
+}
+```
+
+### Analyzing a Crash (iOS - crash file)
+
+```json
+{
+  "tool": "analyze_crash",
+  "arguments": {
+    "platform": "ios",
     "crashLogPath": "/path/to/crash.ips",
-    "dsymPath": "/path/to/app.dSYM",
-    "skipSymbolication": false
+    "dsymPath": "/path/to/app.dSYM"
   }
 }
 ```
