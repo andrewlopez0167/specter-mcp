@@ -1,6 +1,6 @@
 {
   "name": "specter-mcp",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "KMM Diagnostic & Execution Engine - MCP server for AI agents working with Kotlin Multiplatform Mobile projects",
   "type": "module",
   "main": "dist/index.js",
