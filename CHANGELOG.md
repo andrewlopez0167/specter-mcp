@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.4](https://github.com/abd3lraouf/specter-mcp/compare/specter-mcp-v1.1.3...specter-mcp-v1.1.4) (2025-12-21)
+
+
+### Bug Fixes
+
+* Upgrade npm for Trusted Publishing support ([f478a54](https://github.com/abd3lraouf/specter-mcp/commit/f478a54471f85005cb4f315b06e7a9e1d4a2e7d0))
+* Use NPM_TOKEN instead of Trusted Publishing ([f810b6a](https://github.com/abd3lraouf/specter-mcp/commit/f810b6a3738b67a5fe38fbb66ea57efe0a60132a))
+
 ## [1.1.3](https://github.com/abd3lraouf/specter-mcp/compare/specter-mcp-v1.1.2...specter-mcp-v1.1.3) (2025-12-21)
 
 
