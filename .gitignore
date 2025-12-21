@@ -1,15 +1,14 @@
-# Spec framework (development only)
-.specify/
-specs/
-
 # Dependencies
 node_modules/
 
 # Build outputs
 dist/
-/build/
-**/node_modules/**/build/
 *.js.map
+
+# Gradle / Android
+.gradle/
+**/build/
+local.properties
 
 # TypeScript
 *.tsbuildinfo
