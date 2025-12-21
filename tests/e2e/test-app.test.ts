@@ -31,9 +31,9 @@ const TEST_APP = {
     apkPath: 'androidApp/build/outputs/apk/debug/androidApp-debug.apk',
   },
   ios: {
-    bundleId: 'com.specter.testsubject',
-    scheme: 'iosApp',
-    appPath: 'iosApp/build/Build/Products/Debug-iphonesimulator/iosApp.app',
+    bundleId: 'com.specter.counter',
+    scheme: 'SpecterCounter',
+    appPath: 'iosApp/build/Build/Products/Debug-iphonesimulator/SpecterCounter.app',
   },
   deepLinks: {
     home: 'specter://app',
@@ -90,14 +90,10 @@ describe('Test App E2E Suite', () => {
           androidModule: TEST_APP.android.module,
         }) as { success: boolean; artifactPath?: string; error?: string };
 
-        if (result.success) {
-          androidBuildArtifact = resolve(TEST_APP.projectPath, TEST_APP.android.apkPath);
-          expect(existsSync(androidBuildArtifact)).toBe(true);
-          console.log(`Android build successful: ${androidBuildArtifact}`);
-        } else {
-          console.log('Android build failed:', result.error);
-          // Don't fail the test - build may fail for legitimate reasons
-        }
+        expect(result.success).toBe(true);
+        androidBuildArtifact = resolve(TEST_APP.projectPath, TEST_APP.android.apkPath);
+        expect(existsSync(androidBuildArtifact)).toBe(true);
+        console.log(`Android build successful: ${androidBuildArtifact}`);
       } finally {
         process.chdir(originalCwd);
       }
@@ -125,12 +121,9 @@ describe('Test App E2E Suite', () => {
           iosDestination: `platform=iOS Simulator,id=${deviceSetup.iosDeviceId}`,
         }) as { success: boolean; artifactPath?: string; error?: string };
 
-        if (result.success) {
-          iosBuildArtifact = resolve(TEST_APP.projectPath, TEST_APP.ios.appPath);
-          console.log(`iOS build successful: ${iosBuildArtifact}`);
-        } else {
-          console.log('iOS build failed:', result.error);
-        }
+        expect(result.success).toBe(true);
+        iosBuildArtifact = resolve(TEST_APP.projectPath, TEST_APP.ios.appPath);
+        console.log(`iOS build successful: ${iosBuildArtifact}`);
       } finally {
         process.chdir(originalCwd);
       }
@@ -224,24 +217,26 @@ describe('Test App E2E Suite', () => {
         return;
       }
 
+      // Check if app is installed
+      const appPath = iosBuildArtifact || resolve(TEST_APP.projectPath, TEST_APP.ios.appPath);
+      if (!existsSync(appPath)) {
+        console.log('Skipping: iOS app not built/installed');
+        return;
+      }
+
       const registry = getToolRegistry();
       const launchTool = registry.getTool('launch_app');
       expect(launchTool).toBeDefined();
 
-      try {
-        const result = await launchTool!.handler({
-          platform: 'ios',
-          appId: TEST_APP.ios.bundleId,
-          device: deviceSetup.iosDeviceId,
-        }) as { success: boolean; error?: string };
+      const result = await launchTool!.handler({
+        platform: 'ios',
+        appId: TEST_APP.ios.bundleId,
+        device: deviceSetup.iosDeviceId,
+      }) as { success: boolean; error?: string };
 
-        expect(result.success).toBe(true);
-        console.log('iOS app launched successfully');
-        await new Promise(resolve => setTimeout(resolve, 3000));
-      } catch (error) {
-        // App may not be installed - this is acceptable in test environment
-        console.log('iOS app launch failed (app may not be installed):', error);
-      }
+      expect(result.success).toBe(true);
+      console.log('iOS app launched successfully');
+      await new Promise(resolve => setTimeout(resolve, 3000));
     }, 30000);
   });
 
@@ -712,21 +707,18 @@ describe('Integration Tests - MCP Tools with Test App', () => {
 
       // 3. Capture UI (returns UIContext with screenshot property)
       const uiTool = registry.getTool('get_ui_context');
-      try {
-        const uiResult = await uiTool!.handler({
-          platform: 'android',
-          device: deviceSetup.androidDeviceId,
-          skipScreenshot: false,
-        }) as { screenshot?: { data: string; format: string }; elements: unknown[] };
+      const uiResult = await uiTool!.handler({
+        platform: 'android',
+        device: deviceSetup.androidDeviceId,
+        skipScreenshot: false,
+      }) as { success?: boolean; screenshot?: { data: string; format: string }; elements: unknown[] };
 
-        // UIContext returns screenshot with 'data' field (base64 string)
-        if (uiResult.screenshot && uiResult.screenshot.data.length > 0) {
-          console.log(`Screenshot captured: ${uiResult.screenshot.data.length} bytes`);
-        } else {
-          console.log('Screenshot capture returned empty data (device may not have active display)');
-        }
-      } catch (error) {
-        console.log('UI capture failed (acceptable in test environment):', error);
+      // UIContext should succeed
+      expect(uiResult.elements).toBeDefined();
+      if (uiResult.screenshot && uiResult.screenshot.data.length > 0) {
+        console.log(`Screenshot captured: ${uiResult.screenshot.data.length} bytes`);
+      } else {
+        console.log('Screenshot capture returned empty data');
       }
 
       // 4. Navigate via deep link
@@ -812,31 +804,43 @@ describe('Integration Tests - MCP Tools with Test App', () => {
         return;
       }
 
+      // Check if APK exists (app must be built)
+      const apkPath = resolve(TEST_APP.projectPath, TEST_APP.android.apkPath);
+      if (!existsSync(apkPath)) {
+        console.log('Skipping: Android app not built - run build phase first');
+        return;
+      }
+
       const registry = getToolRegistry();
 
       // 1. Navigate to Debug screen
       const deepLinkTool = registry.getTool('deep_link_navigate');
-      await deepLinkTool!.handler({
+      const navResult = await deepLinkTool!.handler({
         platform: 'android',
         deviceId: deviceSetup.androidDeviceId,
         uri: TEST_APP.deepLinks.debug,
-      });
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      }) as { success: boolean };
+
+      expect(navResult.success).toBe(true);
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
       // 2. Tap the caught exception button
       const interactTool = registry.getTool('interact_with_ui');
       try {
-        await interactTool!.handler({
+        const tapResult = await interactTool!.handler({
           platform: 'android',
           device: deviceSetup.androidDeviceId,
           action: 'tap',
           element: 'btn_caught_exception',
-        });
+        }) as { success: boolean };
+
+        expect(tapResult.success).toBe(true);
         await new Promise(resolve => setTimeout(resolve, 1000));
         console.log('Triggered caught exception via Debug screen');
       } catch (error) {
-        // Element not found is acceptable - UI may vary
-        console.log('Could not tap btn_caught_exception (element not found)');
+        // Element not found - app needs to be rebuilt with semantics
+        console.log('Skipping: btn_caught_exception not found. Rebuild app with: cd test-apps/specter-test-subject && ./gradlew :androidApp:assembleDebug');
+        return;
       }
 
       // 3. Analyze crash logs to detect the exception
@@ -879,30 +883,43 @@ describe('Integration Tests - MCP Tools with Test App', () => {
         return;
       }
 
+      // Check if APK exists (app must be built)
+      const apkPath = resolve(TEST_APP.projectPath, TEST_APP.android.apkPath);
+      if (!existsSync(apkPath)) {
+        console.log('Skipping: Android app not built - run build phase first');
+        return;
+      }
+
       const registry = getToolRegistry();
 
       // 1. Navigate to Debug screen
       const deepLinkTool = registry.getTool('deep_link_navigate');
-      await deepLinkTool!.handler({
+      const navResult = await deepLinkTool!.handler({
         platform: 'android',
         deviceId: deviceSetup.androidDeviceId,
         uri: TEST_APP.deepLinks.debug,
-      });
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      }) as { success: boolean };
 
-      // 2. Try to tap the error log button
+      expect(navResult.success).toBe(true);
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // 2. Tap the error log button
       const interactTool = registry.getTool('interact_with_ui');
       try {
-        await interactTool!.handler({
+        const tapResult = await interactTool!.handler({
           platform: 'android',
           device: deviceSetup.androidDeviceId,
           action: 'tap',
           element: 'btn_log_error',
-        });
+        }) as { success: boolean };
+
+        expect(tapResult.success).toBe(true);
         await new Promise(resolve => setTimeout(resolve, 500));
         console.log('Triggered error log via Debug screen');
       } catch (error) {
-        console.log('Could not tap btn_log_error (element not found)');
+        // Element not found - app needs to be rebuilt with semantics
+        console.log('Skipping: btn_log_error not found. Rebuild app with: cd test-apps/specter-test-subject && ./gradlew :androidApp:assembleDebug');
+        return;
       }
 
       // 3. Inspect logs to verify

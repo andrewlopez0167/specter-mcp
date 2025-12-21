@@ -13,6 +13,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -373,7 +375,9 @@ fun DebugScreen() {
                 onClick = {
                     Log.e("SpecterTestSubject", "ERROR: $logMessage")
                 },
-                modifier = Modifier.testTag("btn_log_error")
+                modifier = Modifier
+                    .testTag("btn_log_error")
+                    .semantics { contentDescription = "btn_log_error" }
             ) {
                 Text("E", fontSize = 12.sp)
             }
@@ -400,6 +404,7 @@ fun DebugScreen() {
             modifier = Modifier
                 .fillMaxWidth()
                 .testTag("btn_caught_exception")
+                .semantics { contentDescription = "btn_caught_exception" }
         ) {
             Text("Trigger Caught Exception (logs only)")
         }
