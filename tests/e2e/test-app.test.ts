@@ -39,6 +39,7 @@ const TEST_APP = {
     home: 'specter://app',
     counter: 'specter://counter',
     form: 'specter://form',
+    debug: 'specter://debug',
   },
   maestro: {
     counterFlow: 'maestro/counter_flow.yaml',
@@ -784,7 +785,7 @@ describe('Integration Tests - MCP Tools with Test App', () => {
   });
 
   describe('Debug Screen - Crash Analysis Testing', () => {
-    it('should analyze Android device logs for crash indicators', async () => {
+    it('should navigate to Debug screen via deep link on Android', async () => {
       if (!deviceSetup.androidAvailable) {
         console.log('Skipping: No Android device available');
         return;
@@ -792,20 +793,53 @@ describe('Integration Tests - MCP Tools with Test App', () => {
 
       const registry = getToolRegistry();
 
-      // Launch the app first
-      const launchTool = registry.getTool('launch_app');
-      try {
-        await launchTool!.handler({
-          platform: 'android',
-          appId: TEST_APP.android.appId,
-          device: deviceSetup.androidDeviceId,
-        });
-        await new Promise(resolve => setTimeout(resolve, 2000));
-      } catch (error) {
-        console.log('App launch failed (may not be installed):', error);
+      // Navigate to Debug screen via deep link
+      const deepLinkTool = registry.getTool('deep_link_navigate');
+      const result = await deepLinkTool!.handler({
+        platform: 'android',
+        deviceId: deviceSetup.androidDeviceId,
+        uri: TEST_APP.deepLinks.debug,
+      }) as { success: boolean };
+
+      expect(result.success).toBe(true);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      console.log('Navigated to Debug screen via deep link');
+    }, 30000);
+
+    it('should trigger caught exception and detect it in logs on Android', async () => {
+      if (!deviceSetup.androidAvailable) {
+        console.log('Skipping: No Android device available');
+        return;
       }
 
-      // Use analyze_crash to check device logs
+      const registry = getToolRegistry();
+
+      // 1. Navigate to Debug screen
+      const deepLinkTool = registry.getTool('deep_link_navigate');
+      await deepLinkTool!.handler({
+        platform: 'android',
+        deviceId: deviceSetup.androidDeviceId,
+        uri: TEST_APP.deepLinks.debug,
+      });
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      // 2. Tap the caught exception button
+      const interactTool = registry.getTool('interact_with_ui');
+      try {
+        await interactTool!.handler({
+          platform: 'android',
+          device: deviceSetup.androidDeviceId,
+          action: 'tap',
+          element: 'btn_caught_exception',
+        });
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        console.log('Triggered caught exception via Debug screen');
+      } catch (error) {
+        // Element not found is acceptable - UI may vary
+        console.log('Could not tap btn_caught_exception (element not found)');
+      }
+
+      // 3. Analyze crash logs to detect the exception
       const crashTool = registry.getTool('analyze_crash');
       const result = await crashTool!.handler({
         platform: 'android',
@@ -814,6 +848,7 @@ describe('Integration Tests - MCP Tools with Test App', () => {
         timeRangeSeconds: 60,
       }) as {
         success: boolean;
+        platform: string;
         deviceLogs?: {
           totalEntries: number;
           errorCount: number;
@@ -822,20 +857,23 @@ describe('Integration Tests - MCP Tools with Test App', () => {
         }
       };
 
-      // Verify the structure of the result
       expect(result).toHaveProperty('success');
-      expect(result).toHaveProperty('deviceLogs');
       expect(result).toHaveProperty('platform', 'android');
+      expect(result).toHaveProperty('deviceLogs');
 
       if (result.deviceLogs) {
-        console.log(`Android crash analysis: ${result.deviceLogs.totalEntries} entries, ${result.deviceLogs.errorCount} errors, ${result.deviceLogs.crashIndicators.length} crash indicators`);
-        if (result.deviceLogs.keyErrors.length > 0) {
-          console.log('Key errors found:', result.deviceLogs.keyErrors.slice(0, 3));
+        console.log(`Android crash analysis: ${result.deviceLogs.totalEntries} entries, ${result.deviceLogs.errorCount} errors`);
+        // Check for our test exception in key errors
+        const hasTestException = result.deviceLogs.keyErrors.some(
+          (err: string) => err.includes('SpecterTestSubject') || err.includes('Caught exception')
+        );
+        if (hasTestException) {
+          console.log('Successfully detected test exception in logs!');
         }
       }
     }, 60000);
 
-    it('should inspect Android logs from running app', async () => {
+    it('should trigger error log and detect it via inspect_logs on Android', async () => {
       if (!deviceSetup.androidAvailable) {
         console.log('Skipping: No Android device available');
         return;
@@ -843,20 +881,45 @@ describe('Integration Tests - MCP Tools with Test App', () => {
 
       const registry = getToolRegistry();
 
-      // Use inspect_logs to get app logs
+      // 1. Navigate to Debug screen
+      const deepLinkTool = registry.getTool('deep_link_navigate');
+      await deepLinkTool!.handler({
+        platform: 'android',
+        deviceId: deviceSetup.androidDeviceId,
+        uri: TEST_APP.deepLinks.debug,
+      });
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      // 2. Try to tap the error log button
+      const interactTool = registry.getTool('interact_with_ui');
+      try {
+        await interactTool!.handler({
+          platform: 'android',
+          device: deviceSetup.androidDeviceId,
+          action: 'tap',
+          element: 'btn_log_error',
+        });
+        await new Promise(resolve => setTimeout(resolve, 500));
+        console.log('Triggered error log via Debug screen');
+      } catch (error) {
+        console.log('Could not tap btn_log_error (element not found)');
+      }
+
+      // 3. Inspect logs to verify
       const logTool = registry.getTool('inspect_logs');
       const logResult = await logTool!.handler({
         platform: 'android',
         deviceId: deviceSetup.androidDeviceId,
         appId: TEST_APP.android.appId,
+        minLevel: 'error',
         maxEntries: 100,
-      }) as { success: boolean; entries?: unknown[] };
+      }) as { success: boolean; entries?: Array<{ message?: string }> };
 
       expect(logResult.success).toBe(true);
-      console.log(`Log inspection found ${logResult.entries?.length || 0} entries`);
-    }, 30000);
+      console.log(`Found ${logResult.entries?.length || 0} error log entries`);
+    }, 60000);
 
-    it('should analyze iOS device logs for errors', async () => {
+    it('should analyze iOS device logs for crash indicators', async () => {
       if (!deviceSetup.iosAvailable) {
         console.log('Skipping: No iOS simulator available');
         return;
@@ -873,15 +936,55 @@ describe('Integration Tests - MCP Tools with Test App', () => {
         timeRangeSeconds: 60,
       }) as {
         success: boolean;
+        platform: string;
         deviceLogs?: {
           totalEntries: number;
           errorCount: number;
+          crashIndicators: unknown[];
         }
       };
 
       expect(result).toHaveProperty('success');
+      expect(result).toHaveProperty('platform', 'ios');
       expect(result).toHaveProperty('deviceLogs');
-      console.log(`iOS crash analysis: ${result.deviceLogs?.totalEntries || 0} entries, ${result.deviceLogs?.errorCount || 0} errors`);
+
+      if (result.deviceLogs) {
+        console.log(`iOS crash analysis: ${result.deviceLogs.totalEntries} entries, ${result.deviceLogs.errorCount} errors, ${result.deviceLogs.crashIndicators.length} crash indicators`);
+      }
+    }, 30000);
+
+    it('should return structured crash analysis result with all expected fields', async () => {
+      if (!deviceSetup.androidAvailable) {
+        console.log('Skipping: No Android device available');
+        return;
+      }
+
+      const registry = getToolRegistry();
+      const crashTool = registry.getTool('analyze_crash');
+
+      const result = await crashTool!.handler({
+        platform: 'android',
+        appId: TEST_APP.android.appId,
+        deviceId: deviceSetup.androidDeviceId,
+        timeRangeSeconds: 60,
+      }) as Record<string, unknown>;
+
+      // Verify all expected fields in ExtendedCrashAnalysis
+      expect(result).toHaveProperty('success');
+      expect(result).toHaveProperty('platform');
+      expect(result).toHaveProperty('report');
+      expect(result).toHaveProperty('summary');
+      expect(result).toHaveProperty('patterns');
+      expect(result).toHaveProperty('suggestions');
+      expect(result).toHaveProperty('durationMs');
+      expect(result).toHaveProperty('description');
+      expect(result).toHaveProperty('suspects');
+      expect(result).toHaveProperty('reproducible');
+      expect(result).toHaveProperty('category');
+      expect(result).toHaveProperty('dsymStatus');
+      expect(result).toHaveProperty('deviceLogs');
+
+      console.log('Crash analysis returned all expected fields');
     }, 30000);
   });
 

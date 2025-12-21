@@ -42,13 +42,24 @@ class MainActivity : ComponentActivity() {
             Log.i(TAG, "Preferences initialized")
         }
 
+        // Handle deep link navigation
+        val initialTab = intent?.data?.host?.let { host ->
+            Log.i(TAG, "Deep link received: specter://$host")
+            when (host) {
+                "counter" -> 0
+                "form" -> 1
+                "debug" -> 2
+                else -> 0
+            }
+        } ?: 0
+
         setContent {
             SpecterTestSubjectTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    MainScreen()
+                    MainScreen(initialTab = initialTab)
                 }
             }
         }
@@ -56,8 +67,8 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun MainScreen() {
-    var selectedTab by remember { mutableStateOf(0) }
+fun MainScreen(initialTab: Int = 0) {
+    var selectedTab by remember { mutableStateOf(initialTab) }
     val tabs = listOf("Counter", "Form", "Debug")
 
     Column(modifier = Modifier.fillMaxSize()) {
