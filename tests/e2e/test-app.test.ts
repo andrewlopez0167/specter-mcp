@@ -783,6 +783,108 @@ describe('Integration Tests - MCP Tools with Test App', () => {
     }, 30000);
   });
 
+  describe('Debug Screen - Crash Analysis Testing', () => {
+    it('should analyze Android device logs for crash indicators', async () => {
+      if (!deviceSetup.androidAvailable) {
+        console.log('Skipping: No Android device available');
+        return;
+      }
+
+      const registry = getToolRegistry();
+
+      // Launch the app first
+      const launchTool = registry.getTool('launch_app');
+      try {
+        await launchTool!.handler({
+          platform: 'android',
+          appId: TEST_APP.android.appId,
+          device: deviceSetup.androidDeviceId,
+        });
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      } catch (error) {
+        console.log('App launch failed (may not be installed):', error);
+      }
+
+      // Use analyze_crash to check device logs
+      const crashTool = registry.getTool('analyze_crash');
+      const result = await crashTool!.handler({
+        platform: 'android',
+        appId: TEST_APP.android.appId,
+        deviceId: deviceSetup.androidDeviceId,
+        timeRangeSeconds: 60,
+      }) as {
+        success: boolean;
+        deviceLogs?: {
+          totalEntries: number;
+          errorCount: number;
+          crashIndicators: unknown[];
+          keyErrors: string[];
+        }
+      };
+
+      // Verify the structure of the result
+      expect(result).toHaveProperty('success');
+      expect(result).toHaveProperty('deviceLogs');
+      expect(result).toHaveProperty('platform', 'android');
+
+      if (result.deviceLogs) {
+        console.log(`Android crash analysis: ${result.deviceLogs.totalEntries} entries, ${result.deviceLogs.errorCount} errors, ${result.deviceLogs.crashIndicators.length} crash indicators`);
+        if (result.deviceLogs.keyErrors.length > 0) {
+          console.log('Key errors found:', result.deviceLogs.keyErrors.slice(0, 3));
+        }
+      }
+    }, 60000);
+
+    it('should inspect Android logs from running app', async () => {
+      if (!deviceSetup.androidAvailable) {
+        console.log('Skipping: No Android device available');
+        return;
+      }
+
+      const registry = getToolRegistry();
+
+      // Use inspect_logs to get app logs
+      const logTool = registry.getTool('inspect_logs');
+      const logResult = await logTool!.handler({
+        platform: 'android',
+        deviceId: deviceSetup.androidDeviceId,
+        appId: TEST_APP.android.appId,
+        maxEntries: 100,
+      }) as { success: boolean; entries?: unknown[] };
+
+      expect(logResult.success).toBe(true);
+      console.log(`Log inspection found ${logResult.entries?.length || 0} entries`);
+    }, 30000);
+
+    it('should analyze iOS device logs for errors', async () => {
+      if (!deviceSetup.iosAvailable) {
+        console.log('Skipping: No iOS simulator available');
+        return;
+      }
+
+      const registry = getToolRegistry();
+
+      // Use analyze_crash on iOS to check device logs
+      const crashTool = registry.getTool('analyze_crash');
+      const result = await crashTool!.handler({
+        platform: 'ios',
+        appId: TEST_APP.ios.bundleId,
+        deviceId: deviceSetup.iosDeviceId,
+        timeRangeSeconds: 60,
+      }) as {
+        success: boolean;
+        deviceLogs?: {
+          totalEntries: number;
+          errorCount: number;
+        }
+      };
+
+      expect(result).toHaveProperty('success');
+      expect(result).toHaveProperty('deviceLogs');
+      console.log(`iOS crash analysis: ${result.deviceLogs?.totalEntries || 0} entries, ${result.deviceLogs?.errorCount || 0} errors`);
+    }, 30000);
+  });
+
   describe('Error Handling', () => {
     it('should handle non-existent app gracefully', async () => {
       if (!deviceSetup.androidAvailable) {
