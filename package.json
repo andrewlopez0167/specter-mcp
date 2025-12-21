@@ -6,7 +6,7 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "specter-mcp": "./dist/index.js"
+    "specter-mcp": "dist/index.js"
   },
   "scripts": {
     "build": "tsc",
@@ -19,7 +19,8 @@
     "test:fix": "bash scripts/test-fix-loop.sh",
     "lint": "eslint src/**/*.ts",
     "typecheck": "tsc --noEmit",
-    "prepublishOnly": "npm run build && npm run test && npm run typecheck"
+    "test:unit": "vitest run tests/unit",
+    "prepublishOnly": "npm run build && npm run test:unit && npm run typecheck"
   },
   "keywords": [
     "mcp",

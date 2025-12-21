@@ -122,7 +122,7 @@ describe('UI Inspection E2E (T052, T053)', () => {
       const tool = registry.getTool('get_ui_context');
 
       // Verify the schema accepts the parameter
-      expect(tool!.definition.inputSchema.properties).toHaveProperty('device');
+      expect(tool!.definition.inputSchema.properties).toHaveProperty('deviceId');
     });
   });
 

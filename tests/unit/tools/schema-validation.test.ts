@@ -98,7 +98,7 @@ describe('Tool Schema Validation', () => {
 
         expect(props).toHaveProperty('action');
         expect(props).toHaveProperty('platform');
-        expect(props).toHaveProperty('device');
+        expect(props).toHaveProperty('deviceId');
         expect(props).toHaveProperty('waitForReady');
         expect(props).toHaveProperty('timeoutMs');
       });
@@ -261,7 +261,7 @@ describe('Tool Schema Validation', () => {
 
         expect(props).toHaveProperty('flowPath');
         expect(props).toHaveProperty('platform');
-        expect(props).toHaveProperty('device');
+        expect(props).toHaveProperty('deviceId');
         expect(props).toHaveProperty('appId');
         expect(props).toHaveProperty('timeoutMs');
         expect(props).toHaveProperty('generateFailureBundle');

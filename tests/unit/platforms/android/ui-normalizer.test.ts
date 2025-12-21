@@ -90,7 +90,7 @@ describe('Android UI Normalizer', () => {
       mockedParseAndroidHierarchy.mockResolvedValue([]);
       mockedExtractInteractiveElements.mockReturnValue([]);
 
-      const context = await captureAndroidUIContext({ device: 'emulator-5556' });
+      const context = await captureAndroidUIContext({ deviceId: 'emulator-5556' });
 
       expect(mockedGetDevice).toHaveBeenCalledWith('emulator-5556');
       expect(context.deviceId).toBe('emulator-5556');
@@ -102,7 +102,7 @@ describe('Android UI Normalizer', () => {
         { id: 'emulator-5554', name: 'Pixel_7', status: 'booted' },
       ]);
 
-      await expect(captureAndroidUIContext({ device: 'nonexistent' }))
+      await expect(captureAndroidUIContext({ deviceId: 'nonexistent' }))
         .rejects.toThrow();
     });
 
