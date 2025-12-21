@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="logo.png" alt="Specter MCP Logo" width="128" height="128">
+  <img src="logo.png" alt="Specter MCP Logo" width="400">
 </p>
 
 <h1 align="center">Specter MCP</h1>
