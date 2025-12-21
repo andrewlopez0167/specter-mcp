@@ -156,15 +156,19 @@ describe('Error Handling E2E', () => {
       ).rejects.toThrow();
     });
 
-    it('analyze_crash should reject missing crashLogPath', async () => {
+    it('analyze_crash without crashLogPath should use live device logs', async () => {
       const registry = getToolRegistry();
       const tool = registry.getTool('analyze_crash');
 
-      await expect(
-        tool!.handler({
-          platform: 'ios',
-        })
-      ).rejects.toThrow();
+      // Since analyze_crash now supports live device log analysis,
+      // it should not reject when crashLogPath is missing
+      const result = await tool!.handler({
+        platform: 'ios',
+      }) as { success: boolean; deviceLogs?: object };
+
+      // It should return a result (may or may not find a crash)
+      expect(result).toHaveProperty('success');
+      expect(result).toHaveProperty('deviceLogs');
     });
   });
 

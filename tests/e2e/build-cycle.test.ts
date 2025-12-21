@@ -154,11 +154,11 @@ describe('Build-Test-Debug Cycle E2E', () => {
       expect(tool!.definition.inputSchema.required).toContain('platform');
     });
 
-    it('analyze_crash should require crashLogPath', () => {
+    it('analyze_crash should require platform', () => {
       const registry = getToolRegistry();
       const tool = registry.getTool('analyze_crash');
 
-      expect(tool!.definition.inputSchema.required).toContain('crashLogPath');
+      expect(tool!.definition.inputSchema.required).toContain('platform');
     });
   });
 

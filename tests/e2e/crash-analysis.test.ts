@@ -66,8 +66,10 @@ describe('iOS Crash Analysis E2E (T085)', () => {
       const registry = getToolRegistry();
       const tool = registry.getTool('analyze_crash');
 
+      expect(tool!.definition.inputSchema.properties).toHaveProperty('platform');
       expect(tool!.definition.inputSchema.properties).toHaveProperty('crashLogPath');
-      expect(tool!.definition.inputSchema.required).toContain('crashLogPath');
+      expect(tool!.definition.inputSchema.properties).toHaveProperty('appId');
+      expect(tool!.definition.inputSchema.required).toContain('platform');
     });
 
     it('analyze_crash should have optional dsymPath parameter', () => {
@@ -86,7 +88,7 @@ describe('iOS Crash Analysis E2E (T085)', () => {
   });
 
   describe('Crash Log Validation', () => {
-    it('should reject missing crash log path', async () => {
+    it('should reject missing platform', async () => {
       const registry = getToolRegistry();
       const tool = registry.getTool('analyze_crash');
 
@@ -101,6 +103,7 @@ describe('iOS Crash Analysis E2E (T085)', () => {
 
       await expect(
         tool!.handler({
+          platform: 'ios',
           crashLogPath: '/nonexistent/path/crash.ips',
         })
       ).rejects.toThrow();
@@ -113,6 +116,7 @@ describe('iOS Crash Analysis E2E (T085)', () => {
       const tool = registry.getTool('analyze_crash');
 
       const result = await tool!.handler({
+        platform: 'ios',
         crashLogPath: sampleCrashPath,
         skipSymbolication: true,
       });
@@ -125,6 +129,7 @@ describe('iOS Crash Analysis E2E (T085)', () => {
       const tool = registry.getTool('analyze_crash');
 
       const result = await tool!.handler({
+        platform: 'ios',
         crashLogPath: sampleCrashPath,
         skipSymbolication: true,
       }) as { report?: { processName?: string } };
@@ -138,6 +143,7 @@ describe('iOS Crash Analysis E2E (T085)', () => {
       const tool = registry.getTool('analyze_crash');
 
       const result = await tool!.handler({
+        platform: 'ios',
         crashLogPath: sampleCrashPath,
         skipSymbolication: true,
       }) as { report?: { exception?: { type?: string } } };
@@ -152,6 +158,7 @@ describe('iOS Crash Analysis E2E (T085)', () => {
       const tool = registry.getTool('analyze_crash');
 
       const result = await tool!.handler({
+        platform: 'ios',
         crashLogPath: sampleCrashPath,
         skipSymbolication: true,
       }) as { report?: { exception?: { signal?: string } } };
@@ -166,6 +173,7 @@ describe('iOS Crash Analysis E2E (T085)', () => {
       const tool = registry.getTool('analyze_crash');
 
       const result = await tool!.handler({
+        platform: 'ios',
         crashLogPath: sampleCrashPath,
         skipSymbolication: true,
       }) as { report?: { exception?: { codes?: string; faultAddress?: string } } };
@@ -183,6 +191,7 @@ describe('iOS Crash Analysis E2E (T085)', () => {
       const tool = registry.getTool('analyze_crash');
 
       const result = await tool!.handler({
+        platform: 'ios',
         crashLogPath: sampleCrashPath,
         skipSymbolication: true,
       }) as { report?: { crashedThread?: { frames?: unknown[] } } };
@@ -200,6 +209,7 @@ describe('iOS Crash Analysis E2E (T085)', () => {
       const tool = registry.getTool('analyze_crash');
 
       const result = await tool!.handler({
+        platform: 'ios',
         crashLogPath: sampleCrashPath,
         skipSymbolication: true,
       }) as { patterns?: Array<{ id: string; name: string }> };
@@ -218,6 +228,7 @@ describe('iOS Crash Analysis E2E (T085)', () => {
       const tool = registry.getTool('analyze_crash');
 
       const result = await tool!.handler({
+        platform: 'ios',
         crashLogPath: sampleCrashPath,
         skipSymbolication: true,
       }) as { suggestions?: string[] };
@@ -233,12 +244,14 @@ describe('iOS Crash Analysis E2E (T085)', () => {
       const tool = registry.getTool('analyze_crash');
 
       const result = await tool!.handler({
+        platform: 'ios',
         crashLogPath: sampleCrashPath,
         skipSymbolication: true,
       });
 
       // Verify expected ExtendedCrashAnalysis fields
       expect(result).toHaveProperty('success');
+      expect(result).toHaveProperty('platform', 'ios');
       expect(result).toHaveProperty('report');
       expect(result).toHaveProperty('summary');
       expect(result).toHaveProperty('patterns');
@@ -256,6 +269,7 @@ describe('iOS Crash Analysis E2E (T085)', () => {
       const tool = registry.getTool('analyze_crash');
 
       const result = await tool!.handler({
+        platform: 'ios',
         crashLogPath: sampleCrashPath,
         skipSymbolication: true,
       }) as { report?: { timestamp?: Date } };
@@ -277,6 +291,7 @@ describe('iOS Crash Analysis E2E (T085)', () => {
 
       try {
         await tool!.handler({
+          platform: 'ios',
           crashLogPath: malformedPath,
         });
       } catch (error) {
@@ -298,11 +313,12 @@ describe('iOS Crash Analysis E2E (T085)', () => {
 
       try {
         const result = await tool!.handler({
+          platform: 'ios',
           crashLogPath: minimalPath,
-          symbolicate: false,
+          skipSymbolication: true,
         });
         // Should still parse what's available
-        expect(result).toHaveProperty('appName', 'TestApp');
+        expect(result).toHaveProperty('success');
       } catch {
         // Acceptable if it throws for incomplete data
       } finally {
