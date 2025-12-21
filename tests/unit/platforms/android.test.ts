@@ -302,12 +302,20 @@ emulator-5554\tdevice product:sdk model:Pixel_7 device:emu`,
       const hierarchy = await dumpUiHierarchy('emulator-5554');
 
       expect(hierarchy).toContain('<hierarchy');
+      // First call kills stale uiautomator processes and cleans up temp file
+      expect(mockedExecuteShell).toHaveBeenCalledWith('adb', [
+        '-s',
+        'emulator-5554',
+        'shell',
+        'pkill -9 uiautomator 2>/dev/null; rm -f /sdcard/specter-ui-dump.xml',
+      ], { silent: true });
+      // Second call dumps the UI hierarchy
       expect(mockedExecuteShell).toHaveBeenCalledWith('adb', [
         '-s',
         'emulator-5554',
         'shell',
         'uiautomator dump /sdcard/specter-ui-dump.xml && cat /sdcard/specter-ui-dump.xml',
-      ]);
+      ], { timeoutMs: 20000, silent: true });
     });
 
     it('should throw on uiautomator failure', async () => {

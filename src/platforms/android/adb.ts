@@ -157,26 +157,49 @@ export async function takeScreenshot(deviceId?: string): Promise<Buffer> {
 }
 
 /**
- * Dump UI hierarchy
+ * Dump UI hierarchy with retry logic
  */
 export async function dumpUiHierarchy(deviceId?: string): Promise<string> {
   const tmpFile = '/sdcard/specter-ui-dump.xml';
   const deviceArgs = deviceId ? ['-s', deviceId] : [];
+  const maxRetries = 3;
 
-  // Dump to temp file and cat it (more reliable than /dev/tty in scripts)
-  const dumpResult = await executeShell('adb', [
-    ...deviceArgs,
-    'shell',
-    `uiautomator dump ${tmpFile} && cat ${tmpFile}`,
-  ]);
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    // Kill any stale uiautomator processes first to prevent "Killed" errors
+    await executeShell('adb', [
+      ...deviceArgs,
+      'shell',
+      'pkill -9 uiautomator 2>/dev/null; rm -f ' + tmpFile,
+    ], { silent: true });
 
-  if (dumpResult.exitCode !== 0) {
-    throw Errors.shellExecutionFailed('adb uiautomator dump', dumpResult.stderr);
+    // Wait for process cleanup
+    await delay(300 * attempt);
+
+    // Dump to temp file and cat it
+    const dumpResult = await executeShell('adb', [
+      ...deviceArgs,
+      'shell',
+      `uiautomator dump ${tmpFile} && cat ${tmpFile}`,
+    ], { timeoutMs: 20000, silent: true });
+
+    if (dumpResult.exitCode === 0 && dumpResult.stdout.includes('<hierarchy')) {
+      // Extract XML from output (skip the "UI hierarchy dumped to:" message)
+      const xmlMatch = dumpResult.stdout.match(/<\?xml[\s\S]*<\/hierarchy>/);
+      return xmlMatch?.[0] ?? dumpResult.stdout;
+    }
+
+    // If "Killed" error, retry
+    if (attempt < maxRetries && dumpResult.stderr.includes('Killed')) {
+      continue;
+    }
+
+    // Last attempt failed
+    if (attempt === maxRetries) {
+      throw Errors.shellExecutionFailed('adb uiautomator dump', dumpResult.stderr || 'UI dump failed after retries');
+    }
   }
 
-  // Extract XML from output (skip the "UI hierarchy dumped to:" message)
-  const xmlMatch = dumpResult.stdout.match(/<\?xml[\s\S]*<\/hierarchy>/);
-  return xmlMatch?.[0] ?? dumpResult.stdout;
+  throw Errors.shellExecutionFailed('adb uiautomator dump', 'UI dump failed');
 }
 
 /**

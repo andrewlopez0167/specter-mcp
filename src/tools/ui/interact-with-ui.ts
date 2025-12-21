@@ -6,7 +6,7 @@
 import { isPlatform, InteractionType, INTERACTION_TYPES, SwipeDirection } from '../../models/constants.js';
 import { InteractionResult, Point, UIElement } from '../../models/ui-context.js';
 import { Errors } from '../../models/errors.js';
-import { tap, inputText, swipe, listDevices as listAndroidDevices, dumpUiHierarchy } from '../../platforms/android/adb.js';
+import { tap, inputText, swipe, dumpUiHierarchy } from '../../platforms/android/adb.js';
 import { listDevices as listIOSDevices, getBootedDevice } from '../../platforms/ios/simctl.js';
 import { executeShell } from '../../utils/shell.js';
 import { parseAndroidHierarchy, findElementInHierarchy } from '../../utils/xml-parser.js';
@@ -33,7 +33,7 @@ export interface InteractWithUIArgs {
   /** Duration in ms (for long_press and swipe) */
   durationMs?: number;
   /** Target device ID or name */
-  device?: string;
+  deviceId?: string;
 }
 
 /**
@@ -49,7 +49,7 @@ export async function interactWithUI(args: InteractWithUIArgs): Promise<Interact
     text,
     direction,
     durationMs = 300,
-    device,
+    deviceId,
   } = args;
 
   // Validate platform
@@ -73,7 +73,7 @@ export async function interactWithUI(args: InteractWithUIArgs): Promise<Interact
 
   if (element) {
     // Find element by ID or text
-    const foundElement = await findTargetElement(platform, element, device);
+    const foundElement = await findTargetElement(platform, element, deviceId);
     if (!foundElement) {
       throw Errors.elementNotFound(element);
     }
@@ -95,14 +95,14 @@ export async function interactWithUI(args: InteractWithUIArgs): Promise<Interact
         text,
         direction: direction as SwipeDirection,
         durationMs,
-        device,
+        deviceId,
       });
     } else {
       await performIOSInteraction(interactionType, targetCoords, {
         text,
         direction: direction as SwipeDirection,
         durationMs,
-        device,
+        deviceId,
       });
     }
 
@@ -136,19 +136,9 @@ export async function interactWithUI(args: InteractWithUIArgs): Promise<Interact
 async function findTargetElement(
   platform: string,
   elementQuery: string,
-  device?: string
+  deviceId?: string
 ): Promise<UIElement | undefined> {
   if (platform === 'android') {
-    // Get target device
-    let deviceId: string | undefined;
-    if (device) {
-      const devices = await listAndroidDevices();
-      const found = devices.find(
-        (d) => d.id === device || d.name === device || d.model === device
-      );
-      deviceId = found?.id;
-    }
-
     // Dump UI hierarchy and find element
     const hierarchyXml = await dumpUiHierarchy(deviceId);
     const elements = await parseAndroidHierarchy(hierarchyXml, { flatten: true });
@@ -171,20 +161,10 @@ async function performAndroidInteraction(
     text?: string;
     direction?: SwipeDirection;
     durationMs: number;
-    device?: string;
+    deviceId?: string;
   }
 ): Promise<void> {
-  const { text, direction, durationMs, device } = options;
-
-  // Get target device ID
-  let deviceId: string | undefined;
-  if (device) {
-    const devices = await listAndroidDevices();
-    const found = devices.find(
-      (d) => d.id === device || d.name === device || d.model === device
-    );
-    deviceId = found?.id;
-  }
+  const { text, direction, durationMs, deviceId } = options;
 
   switch (action) {
     case 'tap':
@@ -250,18 +230,18 @@ async function performIOSInteraction(
     text?: string;
     direction?: SwipeDirection;
     durationMs: number;
-    device?: string;
+    deviceId?: string;
   }
 ): Promise<void> {
-  const { text, device } = options;
+  const { text, deviceId } = options;
 
   // Get target device UDID
   let udid: string;
-  if (device) {
+  if (deviceId) {
     const devices = await listIOSDevices();
-    const found = devices.find((d) => d.id === device || d.name === device);
+    const found = devices.find((d) => d.id === deviceId || d.name === deviceId);
     if (!found) {
-      throw Errors.deviceNotFound(device, devices.map((d) => `${d.id} (${d.name})`));
+      throw Errors.deviceNotFound(deviceId, devices.map((d) => `${d.id} (${d.name})`));
     }
     udid = found.id;
   } else {
@@ -401,7 +381,7 @@ export function registerInteractWithUITool(): void {
             type: 'number',
             description: 'Duration in milliseconds (for long_press and swipe, default: 300)',
           },
-          device: {
+          deviceId: {
             type: 'string',
             description: 'Device ID or name (optional)',
           },

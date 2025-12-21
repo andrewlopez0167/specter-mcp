@@ -18,7 +18,7 @@ export interface InstallAppArgs {
   /** Path to the app artifact (APK or .app bundle) */
   appPath: string;
   /** Target device ID or name (optional, uses first available if not specified) */
-  device?: string;
+  deviceId?: string;
 }
 
 /**
@@ -36,7 +36,7 @@ export interface InstallResult {
  * Install app tool handler
  */
 export async function installApp(args: InstallAppArgs): Promise<InstallResult> {
-  const { platform, appPath, device } = args;
+  const { platform, appPath, deviceId } = args;
 
   // Validate platform
   if (!isPlatform(platform)) {
@@ -49,9 +49,9 @@ export async function installApp(args: InstallAppArgs): Promise<InstallResult> {
   }
 
   if (platform === 'android') {
-    return installAndroidApp(appPath, device);
+    return installAndroidApp(appPath, deviceId);
   } else {
-    return installIOSApplication(appPath, device);
+    return installIOSApplication(appPath, deviceId);
   }
 }
 
@@ -151,7 +151,7 @@ export function registerInstallAppTool(): void {
             type: 'string',
             description: 'Path to the app artifact (APK for Android, .app bundle for iOS)',
           },
-          device: {
+          deviceId: {
             type: 'string',
             description: 'Device ID or name (optional, uses first running device if not specified)',
           },

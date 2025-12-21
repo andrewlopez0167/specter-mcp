@@ -21,7 +21,7 @@ export interface RunMaestroFlowArgs {
   /** Target platform */
   platform: string;
   /** Device ID (optional, uses first available) */
-  device?: string;
+  deviceId?: string;
   /** App package/bundle ID */
   appId?: string;
   /** Timeout in milliseconds */
@@ -51,7 +51,7 @@ export async function runMaestroFlowTool(args: RunMaestroFlowArgs): Promise<RunM
   const {
     flowPath,
     platform,
-    device,
+    deviceId,
     appId,
     timeoutMs = 300000,
     generateFailureBundle: shouldGenerateBundle = true,
@@ -72,8 +72,8 @@ export async function runMaestroFlowTool(args: RunMaestroFlowArgs): Promise<RunM
   }
 
   // Get target device
-  const deviceId = await resolveDevice(platform as Platform, device);
-  if (!deviceId) {
+  const resolvedDeviceId = await resolveDevice(platform as Platform, deviceId);
+  if (!resolvedDeviceId) {
     throw Errors.invalidArguments(`No ${platform} device found`);
   }
 
@@ -81,7 +81,7 @@ export async function runMaestroFlowTool(args: RunMaestroFlowArgs): Promise<RunM
   const maestroOptions: MaestroRunOptions = {
     flowPath,
     platform: platform as Platform,
-    deviceId,
+    deviceId: resolvedDeviceId,
     appId,
     timeoutMs,
     env,
@@ -101,7 +101,7 @@ export async function runMaestroFlowTool(args: RunMaestroFlowArgs): Promise<RunM
       const bundle = await generateFailureBundle({
         flowResult,
         platform: platform as Platform,
-        deviceId,
+        deviceId: resolvedDeviceId,
         appIdentifier: appId,
         includeScreenshot: true,
         includeLogs: platform === 'android',
@@ -118,13 +118,13 @@ export async function runMaestroFlowTool(args: RunMaestroFlowArgs): Promise<RunM
 /**
  * Resolve device ID for the target platform
  */
-async function resolveDevice(platform: Platform, device?: string): Promise<string | null> {
+async function resolveDevice(platform: Platform, deviceId?: string): Promise<string | null> {
   if (platform === 'android') {
     const devices = await listAndroidDevices();
 
-    if (device) {
+    if (deviceId) {
       const found = devices.find(
-        (d) => d.id === device || d.name === device || d.model === device
+        (d) => d.id === deviceId || d.name === deviceId || d.model === deviceId
       );
       return found?.id || null;
     }
@@ -132,9 +132,9 @@ async function resolveDevice(platform: Platform, device?: string): Promise<strin
     const booted = devices.find((d) => d.status === 'booted');
     return booted?.id || null;
   } else {
-    if (device) {
-      // Assume device is a UDID
-      return device;
+    if (deviceId) {
+      // Assume deviceId is a UDID
+      return deviceId;
     }
 
     const booted = await getBootedDevice();
@@ -188,7 +188,7 @@ export function registerRunMaestroFlowTool(): void {
             enum: ['android', 'ios'],
             description: 'Target platform',
           },
-          device: {
+          deviceId: {
             type: 'string',
             description: 'Device ID or name (optional, uses first available)',
           },

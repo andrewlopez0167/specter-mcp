@@ -117,7 +117,7 @@ export interface UIContext {
  */
 export interface UIContextOptions {
   /** Target device ID or name */
-  device?: string;
+  deviceId?: string;
   /** Include non-interactive elements */
   includeAllElements?: boolean;
   /** Maximum depth to traverse in hierarchy */

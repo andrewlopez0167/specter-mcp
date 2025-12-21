@@ -36,7 +36,7 @@ export interface ManageEnvArgs {
   /** Target platform */
   platform: string;
   /** Device ID or name */
-  device?: string;
+  deviceId?: string;
   /** Wait for device to be ready after boot */
   waitForReady?: boolean;
   /** Timeout in milliseconds */
@@ -50,7 +50,7 @@ export async function manageEnv(args: ManageEnvArgs): Promise<EnvironmentResult>
   const {
     action,
     platform,
-    device,
+    deviceId,
     waitForReady = true,
     timeoutMs = 120000,
   } = args;
@@ -68,9 +68,9 @@ export async function manageEnv(args: ManageEnvArgs): Promise<EnvironmentResult>
   const startTime = Date.now();
 
   if (platform === 'android') {
-    return manageAndroidEnv(action, device, waitForReady, timeoutMs, startTime);
+    return manageAndroidEnv(action, deviceId, waitForReady, timeoutMs, startTime);
   } else {
-    return manageIOSEnv(action, device, waitForReady, timeoutMs, startTime);
+    return manageIOSEnv(action, deviceId, waitForReady, timeoutMs, startTime);
   }
 }
 
@@ -403,7 +403,7 @@ export function registerManageEnvTool(): void {
             enum: ['android', 'ios'],
             description: 'Target platform',
           },
-          device: {
+          deviceId: {
             type: 'string',
             description: 'Device ID, name, or AVD name (optional, uses first available)',
           },

@@ -21,7 +21,7 @@ export async function captureAndroidUIContext(
   options: UIContextOptions = {}
 ): Promise<UIContext> {
   const {
-    device,
+    deviceId,
     includeAllElements = false,
     maxDepth = 20,
     screenshotQuality = 50,
@@ -32,11 +32,11 @@ export async function captureAndroidUIContext(
   // Find target device
   let targetDeviceId: string | undefined;
 
-  if (device) {
-    const foundDevice = await getDevice(device);
+  if (deviceId) {
+    const foundDevice = await getDevice(deviceId);
     if (!foundDevice) {
       const devices = await listDevices();
-      throw Errors.deviceNotFound(device, devices.map((d) => `${d.id} (${d.name})`));
+      throw Errors.deviceNotFound(deviceId, devices.map((d) => `${d.id} (${d.name})`));
     }
     targetDeviceId = foundDevice.id;
   } else {

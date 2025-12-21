@@ -104,8 +104,22 @@ export async function captureLogcat(
 
     // Include crash logs if requested
     if (includeCrashes && packageName) {
+      // Get crash buffer logs
       const crashes = await getCrashLogs(packageName, deviceId, timeoutMs);
-      filtered = [...filtered, ...crashes];
+
+      // Also get AndroidRuntime logs directly (not filtered by PID)
+      // These contain FATAL EXCEPTION and stack traces
+      const runtimeLogs = await getAndroidRuntimeLogs(deviceId, timeoutMs);
+
+      // Merge and deduplicate by timestamp + message
+      const seen = new Set(filtered.map(e => `${e.timestamp.getTime()}-${e.message}`));
+      for (const entry of [...crashes, ...runtimeLogs]) {
+        const key = `${entry.timestamp.getTime()}-${entry.message}`;
+        if (!seen.has(key)) {
+          filtered.push(entry);
+          seen.add(key);
+        }
+      }
     }
 
     return filtered;
@@ -164,6 +178,10 @@ export async function clearLogcat(deviceId?: string): Promise<boolean> {
 
 /**
  * Get crash/ANR logs
+ * Note: We don't filter by package name in the crash buffer because:
+ * 1. Crash logs use the old PID which may not match the current running app
+ * 2. AndroidRuntime tag doesn't include package name in log line format
+ * 3. The crash buffer is specifically for fatal crashes, so all entries are relevant
  */
 async function getCrashLogs(
   packageName: string,
@@ -176,8 +194,8 @@ async function getCrashLogs(
     args.push('-s', deviceId);
   }
 
-  // Read from crash buffer
-  args.push('logcat', '-b', 'crash', '-d', '-v', 'threadtime', '-t', '100');
+  // Read from crash buffer - get more entries to catch recent crashes
+  args.push('logcat', '-b', 'crash', '-d', '-v', 'threadtime', '-t', '200');
 
   try {
     const result = await executeShell('adb', args, { timeoutMs });
@@ -192,8 +210,62 @@ async function getCrashLogs(
     for (const line of lines) {
       if (!line.trim()) continue;
 
-      // Check if line relates to our package
-      if (!line.includes(packageName)) continue;
+      const entry = parseLogcatLine(line);
+      if (entry) {
+        // Include if:
+        // 1. Line contains package name (process crashed)
+        // 2. Tag is AndroidRuntime (fatal exceptions)
+        // 3. Message contains common crash indicators
+        const isRelevant =
+          line.includes(packageName) ||
+          entry.tag === 'AndroidRuntime' ||
+          entry.tag === 'DEBUG' ||
+          entry.message.includes('FATAL EXCEPTION') ||
+          entry.message.includes('Process:') ||
+          /\b(Exception|Error)\b/.test(entry.message);
+
+        if (isRelevant) {
+          entries.push(entry);
+        }
+      }
+    }
+
+    return entries;
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Get AndroidRuntime logs (FATAL EXCEPTION, stack traces)
+ * These are not filtered by PID to catch crashes from any process
+ */
+async function getAndroidRuntimeLogs(
+  deviceId?: string,
+  timeoutMs: number = 10000
+): Promise<LogEntry[]> {
+  const args: string[] = [];
+
+  if (deviceId) {
+    args.push('-s', deviceId);
+  }
+
+  // Get logs specifically from AndroidRuntime tag (fatal exceptions)
+  args.push('logcat', '-d', '-v', 'threadtime', '-t', '100');
+  args.push('AndroidRuntime:E', '*:S'); // Only AndroidRuntime errors, silence others
+
+  try {
+    const result = await executeShell('adb', args, { timeoutMs });
+
+    if (result.exitCode !== 0) {
+      return [];
+    }
+
+    const entries: LogEntry[] = [];
+    const lines = result.stdout.split('\n');
+
+    for (const line of lines) {
+      if (!line.trim()) continue;
 
       const entry = parseLogcatLine(line);
       if (entry) {

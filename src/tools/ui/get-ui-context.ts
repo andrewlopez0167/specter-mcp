@@ -19,7 +19,7 @@ export interface GetUIContextArgs {
   /** Target platform */
   platform: string;
   /** Target device ID or name */
-  device?: string;
+  deviceId?: string;
   /** Include all elements (not just interactive) */
   includeAllElements?: boolean;
   /** Maximum depth to traverse in hierarchy */
@@ -38,7 +38,7 @@ export interface GetUIContextArgs {
 export async function getUIContext(args: GetUIContextArgs): Promise<UIContext> {
   const {
     platform,
-    device,
+    deviceId,
     includeAllElements = false,
     maxDepth = 20,
     screenshotQuality = 50,
@@ -63,7 +63,7 @@ export async function getUIContext(args: GetUIContextArgs): Promise<UIContext> {
   }
 
   const options: UIContextOptions = {
-    device,
+    deviceId,
     includeAllElements,
     maxDepth,
     screenshotQuality,
@@ -120,7 +120,7 @@ export function registerGetUIContextTool(): void {
             enum: ['android', 'ios'],
             description: 'Target platform',
           },
-          device: {
+          deviceId: {
             type: 'string',
             description: 'Device ID or name (optional, uses first running device if not specified)',
           },

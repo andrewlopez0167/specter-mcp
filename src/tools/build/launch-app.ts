@@ -18,7 +18,7 @@ export interface LaunchAppArgs {
   /** Package name (Android) or bundle ID (iOS) */
   appId: string;
   /** Target device ID or name (optional, uses first available if not specified) */
-  device?: string;
+  deviceId?: string;
   /** Clear app data before launch (Android only) */
   clearData?: boolean;
   /** Arguments to pass to the app (iOS only) */
@@ -40,7 +40,7 @@ export interface LaunchResult {
  * Launch app tool handler
  */
 export async function launchApp(args: LaunchAppArgs): Promise<LaunchResult> {
-  const { platform, appId, device, clearData = false, launchArguments } = args;
+  const { platform, appId, deviceId, clearData = false, launchArguments } = args;
 
   // Validate platform
   if (!isPlatform(platform)) {
@@ -53,9 +53,9 @@ export async function launchApp(args: LaunchAppArgs): Promise<LaunchResult> {
   }
 
   if (platform === 'android') {
-    return launchAndroid(appId, device, clearData);
+    return launchAndroid(appId, deviceId, clearData);
   } else {
-    return launchIOS(appId, device, launchArguments);
+    return launchIOS(appId, deviceId, launchArguments);
   }
 }
 
@@ -157,7 +157,7 @@ export function registerLaunchAppTool(): void {
             type: 'string',
             description: 'Package name (Android) or bundle ID (iOS)',
           },
-          device: {
+          deviceId: {
             type: 'string',
             description: 'Device ID or name (optional, uses first running device if not specified)',
           },

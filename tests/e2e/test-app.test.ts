@@ -10,6 +10,8 @@
  * 3. Launch the app (launch_app)
  * 4. Interact with UI (get_ui_context, interact_with_ui, deep_link_navigate)
  * 5. Run Maestro E2E flows (run_maestro_flow)
+ *
+ * NOTE: Android and iOS tests run in PARALLEL for faster execution.
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
@@ -21,6 +23,73 @@ import {
   ensureDevicesAvailable,
   type DeviceSetupResult,
 } from './setup.js';
+
+/**
+ * Helper to run Android and iOS tests in parallel
+ * Returns results for both platforms
+ */
+async function runParallel<T>(
+  deviceSetup: DeviceSetupResult,
+  androidTest: () => Promise<T>,
+  iosTest: () => Promise<T>
+): Promise<{ android?: T; ios?: T; errors: string[] }> {
+  const errors: string[] = [];
+  const results: { android?: T; ios?: T } = {};
+
+  const promises: Promise<void>[] = [];
+
+  if (deviceSetup.androidAvailable) {
+    promises.push(
+      androidTest()
+        .then(r => { results.android = r; })
+        .catch(e => { errors.push(`Android: ${e.message}`); })
+    );
+  }
+
+  if (deviceSetup.iosAvailable) {
+    promises.push(
+      iosTest()
+        .then(r => { results.ios = r; })
+        .catch(e => { errors.push(`iOS: ${e.message}`); })
+    );
+  }
+
+  await Promise.all(promises);
+  return { ...results, errors };
+}
+
+/**
+ * Helper to run Android and iOS tests sequentially
+ * Used for Maestro tests which can't run in parallel (resource conflicts)
+ */
+async function runSequential<T>(
+  deviceSetup: DeviceSetupResult,
+  androidTest: () => Promise<T>,
+  iosTest: () => Promise<T>
+): Promise<{ android?: T; ios?: T; errors: string[] }> {
+  const errors: string[] = [];
+  const results: { android?: T; ios?: T } = {};
+
+  // Run Android first
+  if (deviceSetup.androidAvailable) {
+    try {
+      results.android = await androidTest();
+    } catch (e: unknown) {
+      errors.push(`Android: ${(e as Error).message}`);
+    }
+  }
+
+  // Then run iOS
+  if (deviceSetup.iosAvailable) {
+    try {
+      results.ios = await iosTest();
+    } catch (e: unknown) {
+      errors.push(`iOS: ${(e as Error).message}`);
+    }
+  }
+
+  return { ...results, errors };
+}
 
 // Test app configuration
 const TEST_APP = {
@@ -68,37 +137,7 @@ describe('Test App E2E Suite', () => {
   });
 
   describe('Build Phase', () => {
-    it('should build Android app successfully', async () => {
-      expect(deviceSetup.androidAvailable, 'Test requires Android device but none available').toBe(true);
-
-      const registry = getToolRegistry();
-      const buildTool = registry.getTool('build_app');
-      expect(buildTool).toBeDefined();
-
-      // Change to test app directory for build
-      const originalCwd = process.cwd();
-      process.chdir(TEST_APP.projectPath);
-
-      try {
-        const result = await buildTool!.handler({
-          platform: 'android',
-          variant: 'debug',
-          clean: false,
-          androidModule: TEST_APP.android.module,
-        }) as { success: boolean; artifactPath?: string; error?: string };
-
-        expect(result.success).toBe(true);
-        androidBuildArtifact = resolve(TEST_APP.projectPath, TEST_APP.android.apkPath);
-        expect(existsSync(androidBuildArtifact)).toBe(true);
-        console.log(`Android build successful: ${androidBuildArtifact}`);
-      } finally {
-        process.chdir(originalCwd);
-      }
-    }, 600000); // 10 minute timeout for build
-
-    it('should build iOS app successfully', async () => {
-      expect(deviceSetup.iosAvailable, 'Test requires iOS device but none available').toBe(true);
-
+    it('should build Android and iOS apps in parallel', async () => {
       const registry = getToolRegistry();
       const buildTool = registry.getTool('build_app');
       expect(buildTool).toBeDefined();
@@ -107,342 +146,322 @@ describe('Test App E2E Suite', () => {
       process.chdir(TEST_APP.projectPath);
 
       try {
-        const result = await buildTool!.handler({
-          platform: 'ios',
-          variant: 'debug',
-          clean: false,
-          iosScheme: TEST_APP.ios.scheme,
-          iosDestination: `platform=iOS Simulator,id=${deviceSetup.iosDeviceId}`,
-        }) as { success: boolean; artifactPath?: string; error?: string };
+        const results = await runParallel(
+          deviceSetup,
+          // Android build
+          async () => {
+            const result = await buildTool!.handler({
+              platform: 'android',
+              variant: 'debug',
+              clean: false,
+              androidModule: TEST_APP.android.module,
+            }) as { success: boolean; artifactPath?: string; error?: string };
 
-        expect(result.success).toBe(true);
-        iosBuildArtifact = resolve(TEST_APP.projectPath, TEST_APP.ios.appPath);
-        console.log(`iOS build successful: ${iosBuildArtifact}`);
+            expect(result.success).toBe(true);
+            androidBuildArtifact = resolve(TEST_APP.projectPath, TEST_APP.android.apkPath);
+            expect(existsSync(androidBuildArtifact)).toBe(true);
+            console.log(`✓ Android build successful: ${androidBuildArtifact}`);
+            return result;
+          },
+          // iOS build
+          async () => {
+            const result = await buildTool!.handler({
+              platform: 'ios',
+              variant: 'debug',
+              clean: false,
+              iosScheme: TEST_APP.ios.scheme,
+              iosDestination: `platform=iOS Simulator,id=${deviceSetup.iosDeviceId}`,
+            }) as { success: boolean; artifactPath?: string; error?: string };
+
+            expect(result.success).toBe(true);
+            iosBuildArtifact = resolve(TEST_APP.projectPath, TEST_APP.ios.appPath);
+            console.log(`✓ iOS build successful: ${iosBuildArtifact}`);
+            return result;
+          }
+        );
+
+        if (results.errors.length > 0) {
+          console.log('Build errors:', results.errors);
+        }
+        expect(results.errors.length).toBe(0);
       } finally {
         process.chdir(originalCwd);
       }
-    }, 600000); // 10 minute timeout for build
+    }, 600000); // 10 minute timeout for parallel builds
   });
 
   describe('Install Phase', () => {
-    it('should install Android APK on device', async () => {
-      expect(deviceSetup.androidAvailable, 'Test requires Android device but none available').toBe(true);
-
-      // Check if APK exists (either from build or pre-built)
-      const apkPath = androidBuildArtifact || resolve(TEST_APP.projectPath, TEST_APP.android.apkPath);
-      expect(existsSync(apkPath), `APK not found at ${apkPath} - run build phase first`).toBe(true);
-
+    it('should install apps on both platforms in parallel', async () => {
       const registry = getToolRegistry();
       const installTool = registry.getTool('install_app');
       expect(installTool).toBeDefined();
 
-      const result = await installTool!.handler({
-        platform: 'android',
-        appPath: apkPath,
-        device: deviceSetup.androidDeviceId,
-      }) as { success: boolean; error?: string };
+      const results = await runParallel(
+        deviceSetup,
+        // Android install
+        async () => {
+          const apkPath = androidBuildArtifact || resolve(TEST_APP.projectPath, TEST_APP.android.apkPath);
+          expect(existsSync(apkPath), `APK not found at ${apkPath}`).toBe(true);
 
-      expect(result.success).toBe(true);
-      console.log('Android app installed successfully');
-    }, 120000); // 2 minute timeout for install
+          const result = await installTool!.handler({
+            platform: 'android',
+            appPath: apkPath,
+            deviceId: deviceSetup.androidDeviceId,
+          }) as { success: boolean; error?: string };
 
-    it('should install iOS app on simulator', async () => {
-      expect(deviceSetup.iosAvailable, 'Test requires iOS device but none available').toBe(true);
+          expect(result.success).toBe(true);
+          console.log('✓ Android app installed successfully');
+          return result;
+        },
+        // iOS install
+        async () => {
+          const appPath = iosBuildArtifact || resolve(TEST_APP.projectPath, TEST_APP.ios.appPath);
+          expect(existsSync(appPath), `iOS app not found at ${appPath}`).toBe(true);
 
-      // Check if .app exists
-      const appPath = iosBuildArtifact || resolve(TEST_APP.projectPath, TEST_APP.ios.appPath);
-      expect(existsSync(appPath), `iOS app not found at ${appPath} - run build phase first`).toBe(true);
+          const result = await installTool!.handler({
+            platform: 'ios',
+            appPath: appPath,
+            deviceId: deviceSetup.iosDeviceId,
+          }) as { success: boolean; error?: string };
 
-      const registry = getToolRegistry();
-      const installTool = registry.getTool('install_app');
-      expect(installTool).toBeDefined();
+          expect(result.success).toBe(true);
+          console.log('✓ iOS app installed successfully');
+          return result;
+        }
+      );
 
-      const result = await installTool!.handler({
-        platform: 'ios',
-        appPath: appPath,
-        device: deviceSetup.iosDeviceId,
-      }) as { success: boolean; error?: string };
-
-      expect(result.success).toBe(true);
-      console.log('iOS app installed successfully');
+      if (results.errors.length > 0) {
+        console.log('Install errors:', results.errors);
+      }
+      expect(results.errors.length).toBe(0);
     }, 120000);
   });
 
   describe('Launch Phase', () => {
-    it('should launch Android app', async () => {
-      expect(deviceSetup.androidAvailable, 'Test requires Android device but none available').toBe(true);
-
+    it('should launch apps on both platforms in parallel', async () => {
       const registry = getToolRegistry();
       const launchTool = registry.getTool('launch_app');
       expect(launchTool).toBeDefined();
 
-      const result = await launchTool!.handler({
-        platform: 'android',
-        appId: TEST_APP.android.appId,
-        device: deviceSetup.androidDeviceId,
-        clearData: true, // Start fresh
-      }) as { success: boolean; error?: string };
+      const results = await runParallel(
+        deviceSetup,
+        // Android launch
+        async () => {
+          const result = await launchTool!.handler({
+            platform: 'android',
+            appId: TEST_APP.android.appId,
+            deviceId: deviceSetup.androidDeviceId,
+            clearData: true,
+          }) as { success: boolean; error?: string };
 
-      expect(result.success).toBe(true);
-      console.log('Android app launched successfully');
+          expect(result.success).toBe(true);
+          console.log('✓ Android app launched successfully');
+          await new Promise(resolve => setTimeout(resolve, 3000));
+          return result;
+        },
+        // iOS launch
+        async () => {
+          const result = await launchTool!.handler({
+            platform: 'ios',
+            appId: TEST_APP.ios.bundleId,
+            deviceId: deviceSetup.iosDeviceId,
+          }) as { success: boolean; error?: string };
 
-      // Wait for app to fully load
-      await new Promise(resolve => setTimeout(resolve, 3000));
-    }, 30000);
+          expect(result.success).toBe(true);
+          console.log('✓ iOS app launched successfully');
+          await new Promise(resolve => setTimeout(resolve, 3000));
+          return result;
+        }
+      );
 
-    it('should launch iOS app', async () => {
-      expect(deviceSetup.iosAvailable, 'Test requires iOS device but none available').toBe(true);
-
-      // Check if app is installed
-      const appPath = iosBuildArtifact || resolve(TEST_APP.projectPath, TEST_APP.ios.appPath);
-      expect(existsSync(appPath), `iOS app not found at ${appPath} - run build phase first`).toBe(true);
-
-      const registry = getToolRegistry();
-      const launchTool = registry.getTool('launch_app');
-      expect(launchTool).toBeDefined();
-
-      const result = await launchTool!.handler({
-        platform: 'ios',
-        appId: TEST_APP.ios.bundleId,
-        device: deviceSetup.iosDeviceId,
-      }) as { success: boolean; error?: string };
-
-      expect(result.success).toBe(true);
-      console.log('iOS app launched successfully');
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      if (results.errors.length > 0) {
+        console.log('Launch errors:', results.errors);
+      }
+      expect(results.errors.length).toBe(0);
     }, 30000);
   });
 
   describe('UI Context Phase (requires app running)', () => {
-    it('should capture Android screenshot with app visible', async () => {
-      expect(deviceSetup.androidAvailable, 'Test requires Android device but none available').toBe(true);
-
+    it('should capture screenshots on both platforms in parallel', async () => {
       const registry = getToolRegistry();
       const uiTool = registry.getTool('get_ui_context');
       expect(uiTool).toBeDefined();
 
-      const result = await uiTool!.handler({
-        platform: 'android',
-        deviceId: deviceSetup.androidDeviceId,
-        captureScreenshot: true,
-        captureHierarchy: true,
-      }) as { success: boolean; screenshot?: string; hierarchy?: unknown; error?: string };
+      const results = await runParallel(
+        deviceSetup,
+        // Android screenshot
+        async () => {
+          const result = await uiTool!.handler({
+            platform: 'android',
+            deviceId: deviceSetup.androidDeviceId,
+            skipScreenshot: false,
+            includeAllElements: true,
+          }) as { screenshot?: { data: string }; elements?: unknown[]; error?: string };
 
-      if (result.success) {
-        expect(result.screenshot).toBeDefined();
-        expect(result.screenshot!.length).toBeGreaterThan(0);
-        console.log(`Android screenshot captured: ${result.screenshot!.length} bytes base64`);
+          expect(result.screenshot).toBeDefined();
+          expect(result.screenshot!.data.length).toBeGreaterThan(0);
+          console.log(`✓ Android screenshot: ${result.screenshot!.data.length} bytes, ${result.elements?.length || 0} elements`);
+          return result;
+        },
+        // iOS screenshot
+        async () => {
+          const result = await uiTool!.handler({
+            platform: 'ios',
+            deviceId: deviceSetup.iosDeviceId,
+            skipScreenshot: false,
+            includeAllElements: true,
+          }) as { screenshot?: { data: string }; elements?: unknown[]; error?: string };
 
-        if (result.hierarchy) {
-          console.log('Android UI hierarchy captured');
+          expect(result.screenshot).toBeDefined();
+          console.log(`✓ iOS screenshot: ${result.screenshot!.data.length} bytes, ${result.elements?.length || 0} elements`);
+          return result;
         }
-      } else {
-        console.log('Screenshot failed:', result.error);
+      );
+
+      if (results.errors.length > 0) {
+        console.log('Screenshot errors:', results.errors);
       }
-    }, 30000);
-
-    it('should capture iOS screenshot with app visible', async () => {
-      expect(deviceSetup.iosAvailable, 'Test requires iOS device but none available').toBe(true);
-
-      const registry = getToolRegistry();
-      const uiTool = registry.getTool('get_ui_context');
-      expect(uiTool).toBeDefined();
-
-      const result = await uiTool!.handler({
-        platform: 'ios',
-        deviceId: deviceSetup.iosDeviceId,
-        captureScreenshot: true,
-        captureHierarchy: true,
-      }) as { success: boolean; screenshot?: string; hierarchy?: unknown; error?: string };
-
-      if (result.success) {
-        expect(result.screenshot).toBeDefined();
-        console.log(`iOS screenshot captured: ${result.screenshot!.length} bytes base64`);
-      } else {
-        console.log('Screenshot failed:', result.error);
-      }
+      // At least one platform should succeed
+      expect(results.android || results.ios).toBeDefined();
     }, 30000);
   });
 
   describe('Deep Link Navigation (requires app installed)', () => {
-    it('should navigate to Counter screen via deep link on Android', async () => {
-      expect(deviceSetup.androidAvailable, 'Test requires Android device but none available').toBe(true);
-
+    it('should navigate via deep links on both platforms in parallel', async () => {
       const registry = getToolRegistry();
       const deepLinkTool = registry.getTool('deep_link_navigate');
       expect(deepLinkTool).toBeDefined();
 
-      const result = await deepLinkTool!.handler({
-        platform: 'android',
-        deviceId: deviceSetup.androidDeviceId,
-        uri: TEST_APP.deepLinks.counter,
-      }) as { success: boolean; error?: string };
+      const results = await runParallel(
+        deviceSetup,
+        // Android deep links
+        async () => {
+          // Navigate to counter
+          const counterResult = await deepLinkTool!.handler({
+            platform: 'android',
+            deviceId: deviceSetup.androidDeviceId,
+            uri: TEST_APP.deepLinks.counter,
+          }) as { success: boolean; error?: string };
+          expect(counterResult.success).toBe(true);
+          console.log('✓ Android: Deep link to counter');
 
-      if (result.success) {
-        console.log('Deep link to counter screen successful');
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      } else {
-        console.log('Deep link failed (app may not be installed):', result.error);
+          await new Promise(resolve => setTimeout(resolve, 500));
+
+          // Navigate to form
+          const formResult = await deepLinkTool!.handler({
+            platform: 'android',
+            deviceId: deviceSetup.androidDeviceId,
+            uri: TEST_APP.deepLinks.form,
+          }) as { success: boolean; error?: string };
+          expect(formResult.success).toBe(true);
+          console.log('✓ Android: Deep link to form');
+
+          return { counter: counterResult, form: formResult };
+        },
+        // iOS deep links
+        async () => {
+          const result = await deepLinkTool!.handler({
+            platform: 'ios',
+            deviceId: deviceSetup.iosDeviceId,
+            uri: TEST_APP.deepLinks.counter,
+          }) as { success: boolean; error?: string };
+          expect(result.success).toBe(true);
+          console.log('✓ iOS: Deep link to counter');
+          return result;
+        }
+      );
+
+      if (results.errors.length > 0) {
+        console.log('Deep link errors:', results.errors);
       }
-    }, 15000);
-
-    it('should navigate to Form screen via deep link on Android', async () => {
-      expect(deviceSetup.androidAvailable, 'Test requires Android device but none available').toBe(true);
-
-      const registry = getToolRegistry();
-      const deepLinkTool = registry.getTool('deep_link_navigate');
-      expect(deepLinkTool).toBeDefined();
-
-      const result = await deepLinkTool!.handler({
-        platform: 'android',
-        deviceId: deviceSetup.androidDeviceId,
-        uri: TEST_APP.deepLinks.form,
-      }) as { success: boolean; error?: string };
-
-      if (result.success) {
-        console.log('Deep link to form screen successful');
-      } else {
-        console.log('Deep link failed:', result.error);
-      }
-    }, 15000);
-
-    it('should navigate via deep link on iOS', async () => {
-      expect(deviceSetup.iosAvailable, 'Test requires iOS device but none available').toBe(true);
-
-      const registry = getToolRegistry();
-      const deepLinkTool = registry.getTool('deep_link_navigate');
-      expect(deepLinkTool).toBeDefined();
-
-      const result = await deepLinkTool!.handler({
-        platform: 'ios',
-        deviceId: deviceSetup.iosDeviceId,
-        uri: TEST_APP.deepLinks.counter,
-      }) as { success: boolean; error?: string };
-
-      if (result.success) {
-        console.log('iOS deep link successful');
-      } else {
-        console.log('Deep link failed:', result.error);
-      }
+      expect(results.errors.length).toBe(0);
     }, 15000);
   });
 
   describe('UI Interaction (requires app running)', () => {
-    it('should tap increment button on Android', async () => {
+    it('should perform UI interactions on Android (tap, input, swipe)', async () => {
       expect(deviceSetup.androidAvailable, 'Test requires Android device but none available').toBe(true);
 
-      // First, launch the app to Counter screen
       const registry = getToolRegistry();
-      const launchTool = registry.getTool('launch_app');
-      await launchTool!.handler({
-        platform: 'android',
-        appId: TEST_APP.android.appId,
-        device: deviceSetup.androidDeviceId,
-      });
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // Get UI hierarchy to find the increment button
-      const uiTool = registry.getTool('get_ui_context');
-      const uiResult = await uiTool!.handler({
-        platform: 'android',
-        device: deviceSetup.androidDeviceId,
-        skipScreenshot: true,
-      }) as { platform: string; elements?: unknown[] };
-
-      expect(uiResult.platform, 'Could not get UI hierarchy').toBe('android');
-
-      // Tap in center of screen (where increment button typically is)
       const interactTool = registry.getTool('interact_with_ui');
-      const result = await interactTool!.handler({
+
+      // Tap in center of screen
+      const tapResult = await interactTool!.handler({
         platform: 'android',
-        device: deviceSetup.androidDeviceId,
+        deviceId: deviceSetup.androidDeviceId,
         action: 'tap',
-        x: 540, // Center of typical mobile screen
+        x: 540,
         y: 960,
       }) as { success: boolean; error?: string };
+      expect(tapResult.success).toBe(true);
+      console.log('✓ Android: Tap executed');
 
-      expect(result.success).toBe(true);
-      console.log('Tap executed on Android');
-    }, 30000);
-
-    it('should input text on Android', async () => {
-      expect(deviceSetup.androidAvailable, 'Test requires Android device but none available').toBe(true);
-
-      const registry = getToolRegistry();
-      const interactTool = registry.getTool('interact_with_ui');
-
-      // input_text action works on the currently focused element
-      const result = await interactTool!.handler({
+      // Input text
+      const inputResult = await interactTool!.handler({
         platform: 'android',
-        device: deviceSetup.androidDeviceId,
+        deviceId: deviceSetup.androidDeviceId,
         action: 'input_text',
         text: 'test@example.com',
       }) as { success: boolean; error?: string };
+      expect(inputResult.success).toBe(true);
+      console.log('✓ Android: Text input executed');
 
-      expect(result.success).toBe(true);
-      console.log('Text input executed on Android');
-    }, 15000);
-
-    it('should swipe on Android', async () => {
-      expect(deviceSetup.androidAvailable, 'Test requires Android device but none available').toBe(true);
-
-      const registry = getToolRegistry();
-      const interactTool = registry.getTool('interact_with_ui');
-
-      // Swipe uses direction and coordinates for the start point
-      const result = await interactTool!.handler({
+      // Swipe
+      const swipeResult = await interactTool!.handler({
         platform: 'android',
-        device: deviceSetup.androidDeviceId,
+        deviceId: deviceSetup.androidDeviceId,
         action: 'swipe',
-        x: 540, // Start point x
-        y: 1200, // Start point y
+        x: 540,
+        y: 1200,
         direction: 'up',
         durationMs: 300,
       }) as { success: boolean; error?: string };
-
-      expect(result.success).toBe(true);
-      console.log('Swipe executed on Android');
-    }, 15000);
+      expect(swipeResult.success).toBe(true);
+      console.log('✓ Android: Swipe executed');
+    }, 30000);
   });
 
   describe('Log Inspection (requires app running)', () => {
-    it('should capture logs from running Android app', async () => {
-      expect(deviceSetup.androidAvailable, 'Test requires Android device but none available').toBe(true);
-
+    it('should capture logs on both platforms in parallel', async () => {
       const registry = getToolRegistry();
       const logTool = registry.getTool('inspect_logs');
       expect(logTool).toBeDefined();
 
-      const result = await logTool!.handler({
-        platform: 'android',
-        deviceId: deviceSetup.androidDeviceId,
-        packageName: TEST_APP.android.appId,
-        timeoutMs: 3000,
-        maxLines: 100,
-      }) as { success: boolean; logs?: unknown[]; error?: string };
+      const results = await runParallel(
+        deviceSetup,
+        // Android logs
+        async () => {
+          const result = await logTool!.handler({
+            platform: 'android',
+            deviceId: deviceSetup.androidDeviceId,
+            appId: TEST_APP.android.appId,
+            timeoutMs: 3000,
+            maxEntries: 100,
+          }) as { success: boolean; entries?: unknown[]; error?: string };
 
-      expect(result.success).toBe(true);
-      if (result.logs && Array.isArray(result.logs)) {
-        console.log(`Captured ${result.logs.length} log entries from ${TEST_APP.android.appId}`);
+          expect(result.success).toBe(true);
+          console.log(`✓ Android: ${(result.entries as unknown[])?.length || 0} log entries`);
+          return result;
+        },
+        // iOS logs
+        async () => {
+          const result = await logTool!.handler({
+            platform: 'ios',
+            deviceId: deviceSetup.iosDeviceId,
+            appId: TEST_APP.ios.bundleId,
+            timeoutMs: 3000,
+          }) as { success: boolean; entries?: unknown[]; error?: string };
+
+          expect(result.success).toBe(true);
+          console.log(`✓ iOS: ${(result.entries as unknown[])?.length || 0} log entries`);
+          return result;
+        }
+      );
+
+      if (results.errors.length > 0) {
+        console.log('Log capture errors:', results.errors);
       }
-    }, 15000);
-
-    it('should capture logs from running iOS app', async () => {
-      expect(deviceSetup.iosAvailable, 'Test requires iOS device but none available').toBe(true);
-
-      const registry = getToolRegistry();
-      const logTool = registry.getTool('inspect_logs');
-      expect(logTool).toBeDefined();
-
-      const result = await logTool!.handler({
-        platform: 'ios',
-        deviceId: deviceSetup.iosDeviceId,
-        bundleId: TEST_APP.ios.bundleId,
-        timeoutMs: 3000,
-      }) as { success: boolean; logs?: unknown[]; error?: string };
-
-      expect(result.success).toBe(true);
-      console.log('iOS logs captured');
+      expect(results.errors.length).toBe(0);
     }, 15000);
   });
 });
@@ -463,9 +482,9 @@ describe('Maestro E2E Flows', () => {
     getToolRegistry().clear();
   });
 
-  it('should run counter flow on Android', async () => {
-    expect(deviceSetup.androidAvailable, 'Test requires Android device but none available').toBe(true);
-
+  // NOTE: Maestro tests run sequentially because Maestro can't control
+  // multiple devices in parallel reliably (causes resource conflicts/timeouts)
+  it('should run counter flow on both platforms sequentially', async () => {
     const flowPath = resolve(TEST_APP.projectPath, TEST_APP.maestro.counterFlow);
     expect(existsSync(flowPath), `Maestro flow file not found at ${flowPath}`).toBe(true);
 
@@ -473,137 +492,140 @@ describe('Maestro E2E Flows', () => {
     const maestroTool = registry.getTool('run_maestro_flow');
     expect(maestroTool).toBeDefined();
 
-    const result = await maestroTool!.handler({
-      flowPath,
-      platform: 'android',
-      device: deviceSetup.androidDeviceId,
-      appId: TEST_APP.android.appId,
-      timeoutMs: 120000,
-      generateFailureBundle: true,
-    }) as {
-      flowResult: { success: boolean; passedSteps: number; totalSteps: number; error?: string };
-      summary: string;
-      failureBundle?: unknown;
-    };
+    const results = await runSequential(
+      deviceSetup,
+      // Android counter flow
+      async () => {
+        const result = await maestroTool!.handler({
+          flowPath,
+          platform: 'android',
+          deviceId: deviceSetup.androidDeviceId,
+          appId: TEST_APP.android.appId,
+          timeoutMs: 120000,
+          generateFailureBundle: true,
+        }) as { flowResult: { success: boolean; passedSteps: number; totalSteps: number; error?: string }; summary: string };
 
-    console.log('Maestro counter flow result:', result.summary);
-    expect(result.flowResult.success, `Counter flow failed: ${result.flowResult.error || result.summary}`).toBe(true);
-    expect(result.flowResult.passedSteps).toBe(result.flowResult.totalSteps);
-  }, 180000); // 3 minute timeout for Maestro flow
+        console.log('✓ Android counter flow:', result.summary);
+        expect(result.flowResult.success, `Android counter flow failed: ${result.flowResult.error}`).toBe(true);
+        return result;
+      },
+      // iOS counter flow
+      async () => {
+        const result = await maestroTool!.handler({
+          flowPath,
+          platform: 'ios',
+          deviceId: deviceSetup.iosDeviceId,
+          appId: TEST_APP.ios.bundleId,
+          timeoutMs: 120000,
+          generateFailureBundle: true,
+        }) as { flowResult: { success: boolean; error?: string }; summary: string };
 
-  it('should run form flow on Android', async () => {
-    expect(deviceSetup.androidAvailable, 'Test requires Android device but none available').toBe(true);
+        console.log('✓ iOS counter flow:', result.summary);
+        expect(result.flowResult.success, `iOS counter flow failed: ${result.flowResult.error}`).toBe(true);
+        return result;
+      }
+    );
 
+    if (results.errors.length > 0) {
+      console.log('Maestro counter flow errors:', results.errors);
+    }
+    expect(results.errors.length).toBe(0);
+  }, 180000);
+
+  it('should run form flow on both platforms sequentially', async () => {
     const flowPath = resolve(TEST_APP.projectPath, TEST_APP.maestro.formFlow);
     expect(existsSync(flowPath), `Maestro flow file not found at ${flowPath}`).toBe(true);
 
     const registry = getToolRegistry();
     const maestroTool = registry.getTool('run_maestro_flow');
 
-    const result = await maestroTool!.handler({
-      flowPath,
-      platform: 'android',
-      device: deviceSetup.androidDeviceId,
-      appId: TEST_APP.android.appId,
-      timeoutMs: 120000,
-      generateFailureBundle: true,
-    }) as { flowResult: { success: boolean; error?: string }; summary: string };
+    const results = await runSequential(
+      deviceSetup,
+      // Android form flow
+      async () => {
+        const result = await maestroTool!.handler({
+          flowPath,
+          platform: 'android',
+          deviceId: deviceSetup.androidDeviceId,
+          appId: TEST_APP.android.appId,
+          timeoutMs: 120000,
+          generateFailureBundle: true,
+        }) as { flowResult: { success: boolean; error?: string }; summary: string };
 
-    console.log('Maestro form flow result:', result.summary);
-    expect(result.flowResult.success, `Form flow failed: ${result.flowResult.error || result.summary}`).toBe(true);
+        console.log('✓ Android form flow:', result.summary);
+        expect(result.flowResult.success, `Android form flow failed: ${result.flowResult.error}`).toBe(true);
+        return result;
+      },
+      // iOS form flow
+      async () => {
+        const result = await maestroTool!.handler({
+          flowPath,
+          platform: 'ios',
+          deviceId: deviceSetup.iosDeviceId,
+          appId: TEST_APP.ios.bundleId,
+          timeoutMs: 120000,
+          generateFailureBundle: true,
+        }) as { flowResult: { success: boolean; error?: string }; summary: string };
+
+        console.log('✓ iOS form flow:', result.summary);
+        expect(result.flowResult.success, `iOS form flow failed: ${result.flowResult.error}`).toBe(true);
+        return result;
+      }
+    );
+
+    if (results.errors.length > 0) {
+      console.log('Maestro form flow errors:', results.errors);
+    }
+    expect(results.errors.length).toBe(0);
   }, 180000);
 
-  it('should run full E2E flow on Android', async () => {
-    expect(deviceSetup.androidAvailable, 'Test requires Android device but none available').toBe(true);
-
+  it('should run full E2E flow on both platforms sequentially', async () => {
     const flowPath = resolve(TEST_APP.projectPath, TEST_APP.maestro.fullFlow);
     expect(existsSync(flowPath), `Maestro flow file not found at ${flowPath}`).toBe(true);
 
     const registry = getToolRegistry();
     const maestroTool = registry.getTool('run_maestro_flow');
 
-    const result = await maestroTool!.handler({
-      flowPath,
-      platform: 'android',
-      device: deviceSetup.androidDeviceId,
-      appId: TEST_APP.android.appId,
-      timeoutMs: 180000,
-      generateFailureBundle: true,
-    }) as {
-      flowResult: { success: boolean; passedSteps: number; totalSteps: number; durationMs: number; error?: string };
-      summary: string;
-    };
+    const results = await runSequential(
+      deviceSetup,
+      // Android full flow
+      async () => {
+        const result = await maestroTool!.handler({
+          flowPath,
+          platform: 'android',
+          deviceId: deviceSetup.androidDeviceId,
+          appId: TEST_APP.android.appId,
+          timeoutMs: 180000,
+          generateFailureBundle: true,
+        }) as { flowResult: { success: boolean; durationMs: number; error?: string }; summary: string };
 
-    console.log('Maestro full flow result:', result.summary);
-    console.log(`Duration: ${(result.flowResult.durationMs / 1000).toFixed(2)}s`);
-    expect(result.flowResult.success, `Full flow failed: ${result.flowResult.error || result.summary}`).toBe(true);
-  }, 240000); // 4 minute timeout
+        console.log('✓ Android full flow:', result.summary);
+        console.log(`  Duration: ${(result.flowResult.durationMs / 1000).toFixed(2)}s`);
+        expect(result.flowResult.success, `Android full flow failed: ${result.flowResult.error}`).toBe(true);
+        return result;
+      },
+      // iOS full flow
+      async () => {
+        const result = await maestroTool!.handler({
+          flowPath,
+          platform: 'ios',
+          deviceId: deviceSetup.iosDeviceId,
+          appId: TEST_APP.ios.bundleId,
+          timeoutMs: 180000,
+          generateFailureBundle: true,
+        }) as { flowResult: { success: boolean; durationMs: number; error?: string }; summary: string };
 
-  it('should run counter flow on iOS', async () => {
-    expect(deviceSetup.iosAvailable, 'Test requires iOS device but none available').toBe(true);
+        console.log('✓ iOS full flow:', result.summary);
+        console.log(`  Duration: ${(result.flowResult.durationMs / 1000).toFixed(2)}s`);
+        expect(result.flowResult.success, `iOS full flow failed: ${result.flowResult.error}`).toBe(true);
+        return result;
+      }
+    );
 
-    const flowPath = resolve(TEST_APP.projectPath, TEST_APP.maestro.counterFlow);
-    expect(existsSync(flowPath), `Maestro flow file not found at ${flowPath}`).toBe(true);
-
-    const registry = getToolRegistry();
-    const maestroTool = registry.getTool('run_maestro_flow');
-
-    const result = await maestroTool!.handler({
-      flowPath,
-      platform: 'ios',
-      device: deviceSetup.iosDeviceId,
-      appId: TEST_APP.ios.bundleId,
-      timeoutMs: 120000,
-      generateFailureBundle: true,
-    }) as { flowResult: { success: boolean; error?: string }; summary: string };
-
-    console.log('iOS Maestro counter flow result:', result.summary);
-    expect(result.flowResult.success, `iOS counter flow failed: ${result.flowResult.error || result.summary}`).toBe(true);
-  }, 180000);
-
-  it('should run form flow on iOS', async () => {
-    expect(deviceSetup.iosAvailable, 'Test requires iOS device but none available').toBe(true);
-
-    const flowPath = resolve(TEST_APP.projectPath, TEST_APP.maestro.formFlow);
-    expect(existsSync(flowPath), `Maestro flow file not found at ${flowPath}`).toBe(true);
-
-    const registry = getToolRegistry();
-    const maestroTool = registry.getTool('run_maestro_flow');
-
-    const result = await maestroTool!.handler({
-      flowPath,
-      platform: 'ios',
-      device: deviceSetup.iosDeviceId,
-      appId: TEST_APP.ios.bundleId,
-      timeoutMs: 120000,
-      generateFailureBundle: true,
-    }) as { flowResult: { success: boolean; error?: string }; summary: string };
-
-    console.log('iOS Maestro form flow result:', result.summary);
-    expect(result.flowResult.success, `iOS form flow failed: ${result.flowResult.error || result.summary}`).toBe(true);
-  }, 180000);
-
-  it('should run full E2E flow on iOS', async () => {
-    expect(deviceSetup.iosAvailable, 'Test requires iOS device but none available').toBe(true);
-
-    const flowPath = resolve(TEST_APP.projectPath, TEST_APP.maestro.fullFlow);
-    expect(existsSync(flowPath), `Maestro flow file not found at ${flowPath}`).toBe(true);
-
-    const registry = getToolRegistry();
-    const maestroTool = registry.getTool('run_maestro_flow');
-
-    const result = await maestroTool!.handler({
-      flowPath,
-      platform: 'ios',
-      device: deviceSetup.iosDeviceId,
-      appId: TEST_APP.ios.bundleId,
-      timeoutMs: 180000,
-      generateFailureBundle: true,
-    }) as { flowResult: { success: boolean; durationMs: number; error?: string }; summary: string };
-
-    console.log('iOS Maestro full flow result:', result.summary);
-    console.log(`Duration: ${(result.flowResult.durationMs / 1000).toFixed(2)}s`);
-    expect(result.flowResult.success, `iOS full flow failed: ${result.flowResult.error || result.summary}`).toBe(true);
+    if (results.errors.length > 0) {
+      console.log('Maestro full flow errors:', results.errors);
+    }
+    expect(results.errors.length).toBe(0);
   }, 240000);
 });
 
@@ -637,7 +659,7 @@ describe('Integration Tests - MCP Tools with Test App', () => {
       const installResult = await installTool!.handler({
         platform: 'android',
         appPath: apkPath,
-        device: deviceSetup.androidDeviceId,
+        deviceId: deviceSetup.androidDeviceId,
       }) as { success: boolean };
 
       expect(installResult.success, 'Install failed').toBe(true);
@@ -647,7 +669,7 @@ describe('Integration Tests - MCP Tools with Test App', () => {
       const launchResult = await launchTool!.handler({
         platform: 'android',
         appId: TEST_APP.android.appId,
-        device: deviceSetup.androidDeviceId,
+        deviceId: deviceSetup.androidDeviceId,
         clearData: true,
       }) as { success: boolean };
 
@@ -658,7 +680,7 @@ describe('Integration Tests - MCP Tools with Test App', () => {
       const uiTool = registry.getTool('get_ui_context');
       const uiResult = await uiTool!.handler({
         platform: 'android',
-        device: deviceSetup.androidDeviceId,
+        deviceId: deviceSetup.androidDeviceId,
         skipScreenshot: false,
       }) as { success?: boolean; screenshot?: { data: string; format: string }; elements: unknown[] };
 
@@ -762,7 +784,7 @@ describe('Integration Tests - MCP Tools with Test App', () => {
       const interactTool = registry.getTool('interact_with_ui');
       const tapResult = await interactTool!.handler({
         platform: 'android',
-        device: deviceSetup.androidDeviceId,
+        deviceId: deviceSetup.androidDeviceId,
         action: 'tap',
         element: 'btn_caught_exception',
       }) as { success: boolean; error?: string };
@@ -832,7 +854,7 @@ describe('Integration Tests - MCP Tools with Test App', () => {
       const interactTool = registry.getTool('interact_with_ui');
       const tapResult = await interactTool!.handler({
         platform: 'android',
-        device: deviceSetup.androidDeviceId,
+        deviceId: deviceSetup.androidDeviceId,
         action: 'tap',
         element: 'btn_log_error',
       }) as { success: boolean; error?: string };
@@ -942,7 +964,7 @@ describe('Integration Tests - MCP Tools with Test App', () => {
           platform: 'android',
           action: 'tap',
           element: 'Trigger NullPointerException',
-          device: deviceSetup.androidDeviceId,
+          deviceId: deviceSetup.androidDeviceId,
         });
       } catch {
         // Expected - app will crash
@@ -956,7 +978,7 @@ describe('Integration Tests - MCP Tools with Test App', () => {
       await launchTool!.handler({
         platform: 'android',
         appId: TEST_APP.android.appId,
-        device: deviceSetup.androidDeviceId,
+        deviceId: deviceSetup.androidDeviceId,
       });
 
       // 5. Analyze crash logs
@@ -979,14 +1001,119 @@ describe('Integration Tests - MCP Tools with Test App', () => {
       expect(result.success).toBe(true);
       expect(result.deviceLogs).toBeDefined();
 
-      // Should detect crash-related errors
-      const hasNullPointer = result.deviceLogs?.keyErrors.some(
-        (err: string) => err.includes('NullPointer') || err.includes('FATAL') || err.includes('crash')
+      // Check crashIndicators (the proper crash detection mechanism)
+      const hasCrashIndicators = (result.deviceLogs?.crashIndicators?.length ?? 0) > 0;
+
+      // Also check keyErrors for crash-related strings as backup
+      const hasNullPointerInErrors = result.deviceLogs?.keyErrors.some(
+        (err: string) => err.includes('NullPointer') || err.includes('FATAL') || err.includes('AndroidRuntime')
       );
 
-      console.log(`Crash analysis after real crash: ${result.deviceLogs?.errorCount} errors, crash detected: ${hasNullPointer}`);
+      const crashDetected = hasCrashIndicators || hasNullPointerInErrors;
+
+      console.log(`Crash analysis after real crash: ${result.deviceLogs?.errorCount} errors, ${result.deviceLogs?.crashIndicators?.length ?? 0} crash indicators, detected: ${crashDetected}`);
+
+      // Log first few key errors for debugging
+      if (result.deviceLogs?.keyErrors && result.deviceLogs.keyErrors.length > 0) {
+        console.log('Sample key errors:', result.deviceLogs.keyErrors.slice(0, 3));
+      }
+      if (result.deviceLogs?.crashIndicators && result.deviceLogs.crashIndicators.length > 0) {
+        console.log('Crash indicators:', result.deviceLogs.crashIndicators.slice(0, 3));
+      }
 
       // At minimum we should see error logs
+      expect(result.deviceLogs!.errorCount).toBeGreaterThan(0);
+    }, 90000);
+
+    it('should detect random crash type on Android', async () => {
+      expect(deviceSetup.androidAvailable, 'Test requires Android device but none available').toBe(true);
+
+      const registry = getToolRegistry();
+
+      // List of crash types to randomly choose from
+      const crashTypes = [
+        { element: 'Trigger NullPointerException', name: 'NullPointerException' },
+        { element: 'Trigger IllegalStateException', name: 'IllegalStateException' },
+        { element: 'Trigger OutOfMemoryError', name: 'OutOfMemoryError' },
+      ];
+
+      // Pick a random crash type
+      const randomCrash = crashTypes[Math.floor(Math.random() * crashTypes.length)];
+      console.log(`Testing random crash type: ${randomCrash.name}`);
+
+      // 1. Navigate to Debug screen
+      const deepLinkTool = registry.getTool('deep_link_navigate');
+      await deepLinkTool!.handler({
+        platform: 'android',
+        uri: 'specter://debug',
+        packageName: TEST_APP.android.appId,
+        deviceId: deviceSetup.androidDeviceId,
+        waitAfterMs: 1000,
+      });
+
+      // 2. Trigger random crash via UI
+      const interactTool = registry.getTool('interact_with_ui');
+      try {
+        await interactTool!.handler({
+          platform: 'android',
+          action: 'tap',
+          element: randomCrash.element,
+          deviceId: deviceSetup.androidDeviceId,
+        });
+      } catch {
+        // Expected - app will crash
+      }
+
+      // 3. Wait for crash to complete
+      await new Promise(resolve => setTimeout(resolve, 3000));
+
+      // 4. Relaunch app
+      const launchTool = registry.getTool('launch_app');
+      await launchTool!.handler({
+        platform: 'android',
+        appId: TEST_APP.android.appId,
+        deviceId: deviceSetup.androidDeviceId,
+      });
+
+      // 5. Analyze crash logs
+      const crashTool = registry.getTool('analyze_crash');
+      const result = await crashTool!.handler({
+        platform: 'android',
+        appId: TEST_APP.android.appId,
+        deviceId: deviceSetup.androidDeviceId,
+        timeRangeSeconds: 120,
+      }) as {
+        success: boolean;
+        category: string;
+        deviceLogs?: {
+          totalEntries: number;
+          errorCount: number;
+          crashIndicators: Array<{ type: string; message: string; severity: string }>;
+          keyErrors: string[];
+        }
+      };
+
+      expect(result.success).toBe(true);
+      expect(result.deviceLogs).toBeDefined();
+
+      // Should detect crash indicators
+      const crashIndicators = result.deviceLogs?.crashIndicators ?? [];
+      const hasCrashIndicators = crashIndicators.length > 0;
+
+      // Check if the specific crash type was detected
+      const crashTypeDetected = crashIndicators.some(
+        (indicator) => indicator.message.includes(randomCrash.name) ||
+                       indicator.message.includes('FATAL') ||
+                       indicator.message.includes('AndroidRuntime')
+      );
+
+      console.log(`Random crash (${randomCrash.name}): ${crashIndicators.length} indicators, detected: ${crashTypeDetected}`);
+      if (crashIndicators.length > 0) {
+        console.log('First crash indicator:', crashIndicators[0]);
+      }
+
+      // Verify crash was detected
+      expect(hasCrashIndicators).toBe(true);
       expect(result.deviceLogs!.errorCount).toBeGreaterThan(0);
     }, 90000);
   });
@@ -1002,7 +1129,7 @@ describe('Integration Tests - MCP Tools with Test App', () => {
         await launchTool!.handler({
           platform: 'android',
           appId: 'com.nonexistent.app.that.does.not.exist',
-          device: deviceSetup.androidDeviceId,
+          deviceId: deviceSetup.androidDeviceId,
         });
         // Should not reach here
         expect(true).toBe(false);

@@ -91,7 +91,7 @@ describe('Real Device E2E Tests', () => {
       const result = await tool!.handler({
         action: 'boot',
         platform: 'android',
-        device: deviceSetup.androidDeviceId,
+        deviceId: deviceSetup.androidDeviceId,
       }) as { success: boolean; message?: string };
 
       // Should succeed or indicate device is already running
@@ -108,7 +108,7 @@ describe('Real Device E2E Tests', () => {
       const result = await tool!.handler({
         action: 'boot',
         platform: 'ios',
-        device: deviceSetup.iosDeviceId,
+        deviceId: deviceSetup.iosDeviceId,
       }) as { success: boolean; message?: string };
 
       expect(result).toHaveProperty('success');
@@ -158,20 +158,19 @@ describe('Real Device E2E Tests', () => {
       const tool = registry.getTool('get_ui_context');
       expect(tool).toBeDefined();
 
+      // Use correct parameter names: 'deviceId' (standardized), 'skipScreenshot' not 'captureScreenshot'
       const result = await tool!.handler({
         platform: 'android',
         deviceId: deviceSetup.androidDeviceId,
-        captureScreenshot: true,
-        captureHierarchy: false,
-      }) as { success: boolean; screenshot?: string; error?: string };
+        skipScreenshot: false,
+        includeAllElements: false,
+      }) as { screenshot?: { data: string }; elements?: unknown[] };
 
-      // This will succeed if device is on, even without app
-      if (result.success) {
-        expect(result.screenshot).toBeDefined();
-      } else {
-        // Acceptable - may need app running
-        console.log('Screenshot capture failed (expected if no app):', result.error);
-      }
+      // get_ui_context returns UIContext directly (no success wrapper)
+      // Screenshot should be captured from any running device
+      expect(result.screenshot).toBeDefined();
+      expect(result.screenshot!.data).toBeDefined();
+      expect(result.screenshot!.data.length).toBeGreaterThan(0);
     });
 
     it('should capture iOS screenshot', async () => {
@@ -181,18 +180,19 @@ describe('Real Device E2E Tests', () => {
       const tool = registry.getTool('get_ui_context');
       expect(tool).toBeDefined();
 
+      // Use correct parameter names: 'deviceId' (standardized), 'skipScreenshot' not 'captureScreenshot'
       const result = await tool!.handler({
         platform: 'ios',
         deviceId: deviceSetup.iosDeviceId,
-        captureScreenshot: true,
-        captureHierarchy: false,
-      }) as { success: boolean; screenshot?: string; error?: string };
+        skipScreenshot: false,
+        includeAllElements: false,
+      }) as { screenshot?: { data: string }; elements?: unknown[] };
 
-      if (result.success) {
-        expect(result.screenshot).toBeDefined();
-      } else {
-        console.log('Screenshot capture failed (expected if no app):', result.error);
-      }
+      // get_ui_context returns UIContext directly (no success wrapper)
+      // Screenshot should be captured from any running simulator
+      expect(result.screenshot).toBeDefined();
+      expect(result.screenshot!.data).toBeDefined();
+      expect(result.screenshot!.data.length).toBeGreaterThan(0);
     });
   });
 
@@ -226,7 +226,7 @@ describe('Real Device E2E Tests', () => {
       // iOS tap is not supported via simctl - should return error with helpful message
       const result = await tool!.handler({
         platform: 'ios',
-        device: deviceSetup.iosDeviceId,
+        deviceId: deviceSetup.iosDeviceId,
         action: 'tap',
         x: 200,
         y: 400,

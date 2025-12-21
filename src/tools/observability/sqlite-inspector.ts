@@ -59,7 +59,8 @@ async function listAndroidDatabases(
   args.push('shell', 'run-as', packageName, 'ls', '-la', dbDir);
 
   try {
-    const result = await executeShell('adb', args, { timeoutMs });
+    // Use silent: true since missing databases dir is normal for apps without SQLite
+    const result = await executeShell('adb', args, { timeoutMs, silent: true });
 
     if (result.exitCode !== 0) {
       return [];

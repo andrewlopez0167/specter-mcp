@@ -440,36 +440,51 @@ function analyzeDeviceLogs(logs: LogEntry[], platform: Platform): DeviceLogSumma
     if (log.level === 'fatal') summary.fatalCount++;
 
     const message = log.message || '';
+    const tag = log.tag || '';
 
     // Detect crash indicators
     if (platform === 'android') {
       // Android-specific patterns
-      if (message.includes('FATAL EXCEPTION') || message.includes('AndroidRuntime')) {
+      // Check both tag (AndroidRuntime) and message (FATAL EXCEPTION, exception types)
+      const isAndroidRuntimeCrash = tag === 'AndroidRuntime' || tag.includes('AndroidRuntime');
+      const isFatalException = message.includes('FATAL EXCEPTION');
+      const isJavaException = /\b(NullPointerException|IllegalStateException|IllegalArgumentException|ClassCastException|IndexOutOfBoundsException|RuntimeException|Exception)\b/.test(message);
+
+      if (isAndroidRuntimeCrash || isFatalException) {
         summary.crashIndicators.push({
           type: 'exception',
-          message: message.slice(0, 200),
+          message: `[${tag}] ${message}`.slice(0, 200),
           timestamp: log.timestamp,
           severity: 'critical',
+        });
+        inStackTrace = true;
+      } else if (isJavaException && (log.level === 'error' || log.level === 'fatal')) {
+        // Java exception in error log
+        summary.crashIndicators.push({
+          type: 'exception',
+          message: `[${tag}] ${message}`.slice(0, 200),
+          timestamp: log.timestamp,
+          severity: 'high',
         });
         inStackTrace = true;
       } else if (message.includes('ANR in') || message.includes('not responding')) {
         summary.crashIndicators.push({
           type: 'anr',
-          message: message.slice(0, 200),
+          message: `[${tag}] ${message}`.slice(0, 200),
           timestamp: log.timestamp,
           severity: 'high',
         });
       } else if (message.includes('signal') && (message.includes('SIGSEGV') || message.includes('SIGABRT'))) {
         summary.crashIndicators.push({
           type: 'native_crash',
-          message: message.slice(0, 200),
+          message: `[${tag}] ${message}`.slice(0, 200),
           timestamp: log.timestamp,
           severity: 'critical',
         });
       } else if (message.includes('OutOfMemoryError') || message.includes('OOM')) {
         summary.crashIndicators.push({
           type: 'oom',
-          message: message.slice(0, 200),
+          message: `[${tag}] ${message}`.slice(0, 200),
           timestamp: log.timestamp,
           severity: 'high',
         });

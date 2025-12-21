@@ -128,12 +128,10 @@ export async function runMaestroFlow(options: MaestroRunOptions): Promise<FlowRe
     steps.push(step);
   }
 
-  // Consider it a failure if:
-  // - Exit code is non-zero
-  // - Any step failed
-  // - No steps were detected (parsing failed or empty flow)
-  const noStepsDetected = steps.length === 0;
-  const success = result.exitCode === 0 && failedAtStep === -1 && !noStepsDetected;
+  // Success is determined primarily by exit code
+  // - Exit code 0 means Maestro completed successfully
+  // - Step parsing is for detailed reporting only (Maestro output format may vary)
+  const success = result.exitCode === 0 && failedAtStep === -1;
 
   return {
     flowName,
@@ -145,13 +143,17 @@ export async function runMaestroFlow(options: MaestroRunOptions): Promise<FlowRe
     durationMs,
     steps,
     error: !success
-      ? (noStepsDetected ? 'No steps detected - flow may have failed to parse or run' : (result.stderr || 'Flow execution failed'))
+      ? (result.stderr || result.stdout || 'Flow execution failed')
       : undefined,
   };
 }
 
 /**
  * Parse flow steps from Maestro raw output
+ * Supports Maestro 2.x output format:
+ *   - "Tap on "+"... COMPLETED"
+ *   - "Assert that "1" is visible... FAILED"
+ *   - "Launch app "com.example"... COMPLETED"
  */
 function parseStepsFromOutput(output: string): FlowStep[] {
   const steps: FlowStep[] = [];
@@ -159,9 +161,37 @@ function parseStepsFromOutput(output: string): FlowStep[] {
 
   let stepIndex = 0;
   for (const line of lines) {
-    // Match Maestro step output patterns
-    // Example: "✓ tapOn: Login button (1.2s)"
-    // Example: "✗ assertVisible: Welcome text (timeout)"
+    // Maestro 2.x format: "Action description... STATUS"
+    // Examples:
+    //   "Tap on "+"... COMPLETED"
+    //   "Assert that "Specter Counter" is visible... COMPLETED"
+    //   "Launch app "${APP_ID}"... COMPLETED"
+    const maestro2Match = line.match(/^(.+)\.\.\.\s+(COMPLETED|FAILED|SKIPPED|RUNNING)$/);
+
+    if (maestro2Match) {
+      const [, description, status] = maestro2Match;
+      const normalizedStatus = status === 'COMPLETED' ? 'passed'
+        : status === 'FAILED' ? 'failed'
+        : status === 'SKIPPED' ? 'skipped'
+        : 'passed';
+
+      // Parse command from description (e.g., "Tap on" -> "tapOn", "Assert that" -> "assertVisible")
+      const command = parseCommandFromDescription(description);
+
+      steps.push({
+        index: stepIndex++,
+        command,
+        args: { description: description.trim() },
+        status: normalizedStatus,
+        durationMs: 0, // Maestro 2.x doesn't show duration per step
+        error: status === 'FAILED' ? description : undefined,
+      });
+      continue;
+    }
+
+    // Legacy format support (Maestro 1.x):
+    // "✓ tapOn: Login button (1.2s)"
+    // "✗ assertVisible: Welcome text (timeout)"
     const passMatch = line.match(/[✓✅]\s+(\w+)(?::\s+(.+))?\s+\(([^)]+)\)/);
     const failMatch = line.match(/[✗❌]\s+(\w+)(?::\s+(.+))?\s+\(([^)]+)\)/);
     const skipMatch = line.match(/[⊘○]\s+(\w+)(?::\s+(.+))?/);
@@ -195,6 +225,26 @@ function parseStepsFromOutput(output: string): FlowStep[] {
   }
 
   return steps;
+}
+
+/**
+ * Parse Maestro command from description text
+ */
+function parseCommandFromDescription(description: string): string {
+  const lower = description.toLowerCase();
+  if (lower.startsWith('tap on')) return 'tapOn';
+  if (lower.startsWith('assert that') && lower.includes('visible')) return 'assertVisible';
+  if (lower.startsWith('assert that')) return 'assert';
+  if (lower.startsWith('launch app')) return 'launchApp';
+  if (lower.startsWith('input text')) return 'inputText';
+  if (lower.startsWith('swipe')) return 'swipe';
+  if (lower.startsWith('scroll')) return 'scroll';
+  if (lower.startsWith('wait')) return 'wait';
+  if (lower.startsWith('back')) return 'back';
+  if (lower.startsWith('hide keyboard')) return 'hideKeyboard';
+  if (lower.startsWith('open link')) return 'openLink';
+  if (lower.startsWith('take screenshot')) return 'takeScreenshot';
+  return 'command';
 }
 
 /**

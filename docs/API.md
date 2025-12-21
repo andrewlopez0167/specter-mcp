@@ -60,7 +60,7 @@ Install an app on a device or simulator. For Android, installs an APK. For iOS, 
 |-----------|------|----------|-------------|
 | `platform` | enum: `android`, `ios` | ✅ | Target platform |
 | `appPath` | string | ✅ | Path to the app artifact (APK for Android, .app bundle for iOS) |
-| `device` | string | ❌ | Device ID or name (optional, uses first running device if not specified) |
+| `deviceId` | string | ❌ | Device ID or name (optional, uses first running device if not specified) |
 
 ### `launch_app`
 
@@ -72,7 +72,7 @@ Launch an installed app on a device or simulator.
 |-----------|------|----------|-------------|
 | `platform` | enum: `android`, `ios` | ✅ | Target platform |
 | `appId` | string | ✅ | Package name (Android) or bundle ID (iOS) |
-| `device` | string | ❌ | Device ID or name (optional, uses first running device if not specified) |
+| `deviceId` | string | ❌ | Device ID or name (optional, uses first running device if not specified) |
 | `clearData` | boolean | ❌ | Clear app data before launch (Android only, default: false) |
 | `launchArguments` | array | ❌ | Arguments to pass to the app (iOS only) |
 
@@ -87,7 +87,7 @@ Capture the current UI state including screenshot and interactive elements. Retu
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `platform` | enum: `android`, `ios` | ✅ | Target platform |
-| `device` | string | ❌ | Device ID or name (optional, uses first running device if not specified) |
+| `deviceId` | string | ❌ | Device ID or name (optional, uses first running device if not specified) |
 | `includeAllElements` | boolean | ❌ | Include all elements, not just interactive ones (default: false) |
 | `maxDepth` | number | ❌ | Maximum depth to traverse in UI hierarchy (default: 20) |
 | `screenshotQuality` | number | ❌ | Screenshot JPEG quality 1-100 (default: 50) |
@@ -110,7 +110,7 @@ Perform UI interactions like tap, swipe, or text input. Can target elements by I
 | `text` | string | ❌ | Text to input (for input_text action) |
 | `direction` | enum: `up`, `down`, `left`, `right` | ❌ | Swipe direction (for swipe action) |
 | `durationMs` | number | ❌ | Duration in milliseconds (for long_press and swipe, default: 300) |
-| `device` | string | ❌ | Device ID or name (optional) |
+| `deviceId` | string | ❌ | Device ID or name (optional) |
 
 ## Testing & QA
 
@@ -140,7 +140,7 @@ Run a Maestro E2E test flow. Returns structured results with step-by-step status
 |-----------|------|----------|-------------|
 | `flowPath` | string | ✅ | Path to the Maestro flow YAML file |
 | `platform` | enum: `android`, `ios` | ✅ | Target platform |
-| `device` | string | ❌ | Device ID or name (optional, uses first available) |
+| `deviceId` | string | ❌ | Device ID or name (optional, uses first available) |
 | `appId` | string | ❌ | App package (Android) or bundle ID (iOS) |
 | `timeoutMs` | number | ❌ | Timeout in milliseconds (default: 300000) |
 | `generateFailureBundle` | boolean | ❌ | Generate failure bundle with screenshot and logs on failure (default: true) |
@@ -187,7 +187,7 @@ Manage device environment: boot, shutdown, or restart emulators and simulators.
 |-----------|------|----------|-------------|
 | `action` | enum: `boot`, `shutdown`, `restart` | ✅ | Action to perform |
 | `platform` | enum: `android`, `ios` | ✅ | Target platform |
-| `device` | string | ❌ | Device ID, name, or AVD name (optional, uses first available) |
+| `deviceId` | string | ❌ | Device ID, name, or AVD name (optional, uses first available) |
 | `waitForReady` | boolean | ❌ | Wait for device to be fully ready after boot (default: true) |
 | `timeoutMs` | number | ❌ | Timeout in milliseconds (default: 120000) |
 
@@ -367,4 +367,4 @@ All tools return structured results with error information when failures occur:
 
 ---
 
-*Generated on 2025-12-20*
+*Generated on 2025-12-21*
