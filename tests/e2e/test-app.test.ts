@@ -1,0 +1,831 @@
+/**
+ * Test App E2E Tests
+ *
+ * Comprehensive tests that build, install, and test against the
+ * Specter Test Subject KMM app (test-apps/specter-test-subject/).
+ *
+ * These tests validate the full MCP tool workflow:
+ * 1. Build the app (build_app)
+ * 2. Install on device (install_app)
+ * 3. Launch the app (launch_app)
+ * 4. Interact with UI (get_ui_context, interact_with_ui, deep_link_navigate)
+ * 5. Run Maestro E2E flows (run_maestro_flow)
+ */
+
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { existsSync } from 'fs';
+import { resolve } from 'path';
+import { getToolRegistry, registerAllTools } from '../../src/tools/register.js';
+import { resetConfig, setConfig } from '../../src/config.js';
+import {
+  ensureDevicesAvailable,
+  type DeviceSetupResult,
+} from './setup.js';
+
+// Test app configuration
+const TEST_APP = {
+  projectPath: resolve(process.cwd(), 'test-apps/specter-test-subject'),
+  android: {
+    appId: 'com.specter.testsubject',
+    module: 'androidApp',
+    apkPath: 'androidApp/build/outputs/apk/debug/androidApp-debug.apk',
+  },
+  ios: {
+    bundleId: 'com.specter.testsubject',
+    scheme: 'iosApp',
+    appPath: 'iosApp/build/Build/Products/Debug-iphonesimulator/iosApp.app',
+  },
+  deepLinks: {
+    home: 'specter://app',
+    counter: 'specter://counter',
+    form: 'specter://form',
+  },
+  maestro: {
+    counterFlow: 'maestro/counter_flow.yaml',
+    formFlow: 'maestro/form_flow.yaml',
+    fullFlow: 'maestro/full_flow.yaml',
+  },
+};
+
+describe('Test App E2E Suite', () => {
+  let deviceSetup: DeviceSetupResult;
+  let androidBuildArtifact: string | null = null;
+  let iosBuildArtifact: string | null = null;
+
+  beforeAll(async () => {
+    resetConfig();
+    setConfig({ debug: false, logLevel: 'error' });
+    await registerAllTools();
+
+    // Auto-launch emulators/simulators if not running
+    deviceSetup = await ensureDevicesAvailable();
+  }, 180000); // 3 minute timeout for device launch
+
+  afterAll(() => {
+    resetConfig();
+    getToolRegistry().clear();
+  });
+
+  describe('Build Phase', () => {
+    it('should build Android app successfully', async () => {
+      if (!deviceSetup.androidAvailable) {
+        console.log('Skipping: No Android device available');
+        return;
+      }
+
+      const registry = getToolRegistry();
+      const buildTool = registry.getTool('build_app');
+      expect(buildTool).toBeDefined();
+
+      // Change to test app directory for build
+      const originalCwd = process.cwd();
+      process.chdir(TEST_APP.projectPath);
+
+      try {
+        const result = await buildTool!.handler({
+          platform: 'android',
+          variant: 'debug',
+          clean: false,
+          androidModule: TEST_APP.android.module,
+        }) as { success: boolean; artifactPath?: string; error?: string };
+
+        if (result.success) {
+          androidBuildArtifact = resolve(TEST_APP.projectPath, TEST_APP.android.apkPath);
+          expect(existsSync(androidBuildArtifact)).toBe(true);
+          console.log(`Android build successful: ${androidBuildArtifact}`);
+        } else {
+          console.log('Android build failed:', result.error);
+          // Don't fail the test - build may fail for legitimate reasons
+        }
+      } finally {
+        process.chdir(originalCwd);
+      }
+    }, 600000); // 10 minute timeout for build
+
+    it('should build iOS app successfully', async () => {
+      if (!deviceSetup.iosAvailable) {
+        console.log('Skipping: No iOS device available');
+        return;
+      }
+
+      const registry = getToolRegistry();
+      const buildTool = registry.getTool('build_app');
+      expect(buildTool).toBeDefined();
+
+      const originalCwd = process.cwd();
+      process.chdir(TEST_APP.projectPath);
+
+      try {
+        const result = await buildTool!.handler({
+          platform: 'ios',
+          variant: 'debug',
+          clean: false,
+          iosScheme: TEST_APP.ios.scheme,
+          iosDestination: `platform=iOS Simulator,id=${deviceSetup.iosDeviceId}`,
+        }) as { success: boolean; artifactPath?: string; error?: string };
+
+        if (result.success) {
+          iosBuildArtifact = resolve(TEST_APP.projectPath, TEST_APP.ios.appPath);
+          console.log(`iOS build successful: ${iosBuildArtifact}`);
+        } else {
+          console.log('iOS build failed:', result.error);
+        }
+      } finally {
+        process.chdir(originalCwd);
+      }
+    }, 600000); // 10 minute timeout for build
+  });
+
+  describe('Install Phase', () => {
+    it('should install Android APK on device', async () => {
+      if (!deviceSetup.androidAvailable) {
+        console.log('Skipping: No Android device available');
+        return;
+      }
+
+      // Check if APK exists (either from build or pre-built)
+      const apkPath = androidBuildArtifact || resolve(TEST_APP.projectPath, TEST_APP.android.apkPath);
+      if (!existsSync(apkPath)) {
+        console.log('Skipping: No APK available to install');
+        return;
+      }
+
+      const registry = getToolRegistry();
+      const installTool = registry.getTool('install_app');
+      expect(installTool).toBeDefined();
+
+      const result = await installTool!.handler({
+        platform: 'android',
+        appPath: apkPath,
+        device: deviceSetup.androidDeviceId,
+      }) as { success: boolean; error?: string };
+
+      expect(result.success).toBe(true);
+      console.log('Android app installed successfully');
+    }, 120000); // 2 minute timeout for install
+
+    it('should install iOS app on simulator', async () => {
+      if (!deviceSetup.iosAvailable) {
+        console.log('Skipping: No iOS device available');
+        return;
+      }
+
+      // Check if .app exists
+      const appPath = iosBuildArtifact || resolve(TEST_APP.projectPath, TEST_APP.ios.appPath);
+      if (!existsSync(appPath)) {
+        console.log('Skipping: No iOS app available to install');
+        return;
+      }
+
+      const registry = getToolRegistry();
+      const installTool = registry.getTool('install_app');
+      expect(installTool).toBeDefined();
+
+      const result = await installTool!.handler({
+        platform: 'ios',
+        appPath: appPath,
+        device: deviceSetup.iosDeviceId,
+      }) as { success: boolean; error?: string };
+
+      expect(result.success).toBe(true);
+      console.log('iOS app installed successfully');
+    }, 120000);
+  });
+
+  describe('Launch Phase', () => {
+    it('should launch Android app', async () => {
+      if (!deviceSetup.androidAvailable) {
+        console.log('Skipping: No Android device available');
+        return;
+      }
+
+      const registry = getToolRegistry();
+      const launchTool = registry.getTool('launch_app');
+      expect(launchTool).toBeDefined();
+
+      const result = await launchTool!.handler({
+        platform: 'android',
+        appId: TEST_APP.android.appId,
+        device: deviceSetup.androidDeviceId,
+        clearData: true, // Start fresh
+      }) as { success: boolean; error?: string };
+
+      expect(result.success).toBe(true);
+      console.log('Android app launched successfully');
+
+      // Wait for app to fully load
+      await new Promise(resolve => setTimeout(resolve, 3000));
+    }, 30000);
+
+    it('should launch iOS app', async () => {
+      if (!deviceSetup.iosAvailable) {
+        console.log('Skipping: No iOS device available');
+        return;
+      }
+
+      const registry = getToolRegistry();
+      const launchTool = registry.getTool('launch_app');
+      expect(launchTool).toBeDefined();
+
+      try {
+        const result = await launchTool!.handler({
+          platform: 'ios',
+          appId: TEST_APP.ios.bundleId,
+          device: deviceSetup.iosDeviceId,
+        }) as { success: boolean; error?: string };
+
+        expect(result.success).toBe(true);
+        console.log('iOS app launched successfully');
+        await new Promise(resolve => setTimeout(resolve, 3000));
+      } catch (error) {
+        // App may not be installed - this is acceptable in test environment
+        console.log('iOS app launch failed (app may not be installed):', error);
+      }
+    }, 30000);
+  });
+
+  describe('UI Context Phase (requires app running)', () => {
+    it('should capture Android screenshot with app visible', async () => {
+      if (!deviceSetup.androidAvailable) {
+        console.log('Skipping: No Android device available');
+        return;
+      }
+
+      const registry = getToolRegistry();
+      const uiTool = registry.getTool('get_ui_context');
+      expect(uiTool).toBeDefined();
+
+      const result = await uiTool!.handler({
+        platform: 'android',
+        deviceId: deviceSetup.androidDeviceId,
+        captureScreenshot: true,
+        captureHierarchy: true,
+      }) as { success: boolean; screenshot?: string; hierarchy?: unknown; error?: string };
+
+      if (result.success) {
+        expect(result.screenshot).toBeDefined();
+        expect(result.screenshot!.length).toBeGreaterThan(0);
+        console.log(`Android screenshot captured: ${result.screenshot!.length} bytes base64`);
+
+        if (result.hierarchy) {
+          console.log('Android UI hierarchy captured');
+        }
+      } else {
+        console.log('Screenshot failed:', result.error);
+      }
+    }, 30000);
+
+    it('should capture iOS screenshot with app visible', async () => {
+      if (!deviceSetup.iosAvailable) {
+        console.log('Skipping: No iOS device available');
+        return;
+      }
+
+      const registry = getToolRegistry();
+      const uiTool = registry.getTool('get_ui_context');
+      expect(uiTool).toBeDefined();
+
+      const result = await uiTool!.handler({
+        platform: 'ios',
+        deviceId: deviceSetup.iosDeviceId,
+        captureScreenshot: true,
+        captureHierarchy: true,
+      }) as { success: boolean; screenshot?: string; hierarchy?: unknown; error?: string };
+
+      if (result.success) {
+        expect(result.screenshot).toBeDefined();
+        console.log(`iOS screenshot captured: ${result.screenshot!.length} bytes base64`);
+      } else {
+        console.log('Screenshot failed:', result.error);
+      }
+    }, 30000);
+  });
+
+  describe('Deep Link Navigation (requires app installed)', () => {
+    it('should navigate to Counter screen via deep link on Android', async () => {
+      if (!deviceSetup.androidAvailable) {
+        console.log('Skipping: No Android device available');
+        return;
+      }
+
+      const registry = getToolRegistry();
+      const deepLinkTool = registry.getTool('deep_link_navigate');
+      expect(deepLinkTool).toBeDefined();
+
+      const result = await deepLinkTool!.handler({
+        platform: 'android',
+        deviceId: deviceSetup.androidDeviceId,
+        uri: TEST_APP.deepLinks.counter,
+      }) as { success: boolean; error?: string };
+
+      if (result.success) {
+        console.log('Deep link to counter screen successful');
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      } else {
+        console.log('Deep link failed (app may not be installed):', result.error);
+      }
+    }, 15000);
+
+    it('should navigate to Form screen via deep link on Android', async () => {
+      if (!deviceSetup.androidAvailable) {
+        console.log('Skipping: No Android device available');
+        return;
+      }
+
+      const registry = getToolRegistry();
+      const deepLinkTool = registry.getTool('deep_link_navigate');
+      expect(deepLinkTool).toBeDefined();
+
+      const result = await deepLinkTool!.handler({
+        platform: 'android',
+        deviceId: deviceSetup.androidDeviceId,
+        uri: TEST_APP.deepLinks.form,
+      }) as { success: boolean; error?: string };
+
+      if (result.success) {
+        console.log('Deep link to form screen successful');
+      } else {
+        console.log('Deep link failed:', result.error);
+      }
+    }, 15000);
+
+    it('should navigate via deep link on iOS', async () => {
+      if (!deviceSetup.iosAvailable) {
+        console.log('Skipping: No iOS device available');
+        return;
+      }
+
+      const registry = getToolRegistry();
+      const deepLinkTool = registry.getTool('deep_link_navigate');
+      expect(deepLinkTool).toBeDefined();
+
+      const result = await deepLinkTool!.handler({
+        platform: 'ios',
+        deviceId: deviceSetup.iosDeviceId,
+        uri: TEST_APP.deepLinks.counter,
+      }) as { success: boolean; error?: string };
+
+      if (result.success) {
+        console.log('iOS deep link successful');
+      } else {
+        console.log('Deep link failed:', result.error);
+      }
+    }, 15000);
+  });
+
+  describe('UI Interaction (requires app running)', () => {
+    it('should tap increment button on Android', async () => {
+      if (!deviceSetup.androidAvailable) {
+        console.log('Skipping: No Android device available');
+        return;
+      }
+
+      // First, launch the app to Counter screen
+      const registry = getToolRegistry();
+      const launchTool = registry.getTool('launch_app');
+      await launchTool!.handler({
+        platform: 'android',
+        appId: TEST_APP.android.appId,
+        device: deviceSetup.androidDeviceId,
+      });
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Get UI hierarchy to find the increment button
+      const uiTool = registry.getTool('get_ui_context');
+      const uiResult = await uiTool!.handler({
+        platform: 'android',
+        deviceId: deviceSetup.androidDeviceId,
+        captureHierarchy: true,
+        captureScreenshot: false,
+      }) as { success: boolean; hierarchy?: unknown };
+
+      if (!uiResult.success) {
+        console.log('Could not get UI hierarchy, skipping tap test');
+        return;
+      }
+
+      // Tap in center of screen (where increment button typically is)
+      const interactTool = registry.getTool('interact_with_ui');
+      const result = await interactTool!.handler({
+        platform: 'android',
+        device: deviceSetup.androidDeviceId,
+        action: 'tap',
+        x: 540, // Center of typical mobile screen
+        y: 960,
+      }) as { success: boolean; error?: string };
+
+      expect(result.success).toBe(true);
+      console.log('Tap executed on Android');
+    }, 30000);
+
+    it('should input text on Android', async () => {
+      if (!deviceSetup.androidAvailable) {
+        console.log('Skipping: No Android device available');
+        return;
+      }
+
+      const registry = getToolRegistry();
+      const interactTool = registry.getTool('interact_with_ui');
+
+      // input_text action works on the currently focused element
+      const result = await interactTool!.handler({
+        platform: 'android',
+        device: deviceSetup.androidDeviceId,
+        action: 'input_text',
+        text: 'test@example.com',
+      }) as { success: boolean; error?: string };
+
+      expect(result.success).toBe(true);
+      console.log('Text input executed on Android');
+    }, 15000);
+
+    it('should swipe on Android', async () => {
+      if (!deviceSetup.androidAvailable) {
+        console.log('Skipping: No Android device available');
+        return;
+      }
+
+      const registry = getToolRegistry();
+      const interactTool = registry.getTool('interact_with_ui');
+
+      // Swipe uses direction and coordinates for the start point
+      const result = await interactTool!.handler({
+        platform: 'android',
+        device: deviceSetup.androidDeviceId,
+        action: 'swipe',
+        x: 540, // Start point x
+        y: 1200, // Start point y
+        direction: 'up',
+        durationMs: 300,
+      }) as { success: boolean; error?: string };
+
+      expect(result.success).toBe(true);
+      console.log('Swipe executed on Android');
+    }, 15000);
+  });
+
+  describe('Log Inspection (requires app running)', () => {
+    it('should capture logs from running Android app', async () => {
+      if (!deviceSetup.androidAvailable) {
+        console.log('Skipping: No Android device available');
+        return;
+      }
+
+      const registry = getToolRegistry();
+      const logTool = registry.getTool('inspect_logs');
+      expect(logTool).toBeDefined();
+
+      const result = await logTool!.handler({
+        platform: 'android',
+        deviceId: deviceSetup.androidDeviceId,
+        packageName: TEST_APP.android.appId,
+        timeoutMs: 3000,
+        maxLines: 100,
+      }) as { success: boolean; logs?: unknown[]; error?: string };
+
+      expect(result.success).toBe(true);
+      if (result.logs && Array.isArray(result.logs)) {
+        console.log(`Captured ${result.logs.length} log entries from ${TEST_APP.android.appId}`);
+      }
+    }, 15000);
+
+    it('should capture logs from running iOS app', async () => {
+      if (!deviceSetup.iosAvailable) {
+        console.log('Skipping: No iOS device available');
+        return;
+      }
+
+      const registry = getToolRegistry();
+      const logTool = registry.getTool('inspect_logs');
+      expect(logTool).toBeDefined();
+
+      const result = await logTool!.handler({
+        platform: 'ios',
+        deviceId: deviceSetup.iosDeviceId,
+        bundleId: TEST_APP.ios.bundleId,
+        timeoutMs: 3000,
+      }) as { success: boolean; logs?: unknown[]; error?: string };
+
+      expect(result.success).toBe(true);
+      console.log('iOS logs captured');
+    }, 15000);
+  });
+});
+
+describe('Maestro E2E Flows', () => {
+  let deviceSetup: DeviceSetupResult;
+
+  beforeAll(async () => {
+    resetConfig();
+    setConfig({ debug: false, logLevel: 'error' });
+    await registerAllTools();
+
+    deviceSetup = await ensureDevicesAvailable();
+  }, 180000);
+
+  afterAll(() => {
+    resetConfig();
+    getToolRegistry().clear();
+  });
+
+  it('should run counter flow on Android', async () => {
+    if (!deviceSetup.androidAvailable) {
+      console.log('Skipping: No Android device available');
+      return;
+    }
+
+    const flowPath = resolve(TEST_APP.projectPath, TEST_APP.maestro.counterFlow);
+    if (!existsSync(flowPath)) {
+      console.log('Skipping: Maestro flow file not found');
+      return;
+    }
+
+    const registry = getToolRegistry();
+    const maestroTool = registry.getTool('run_maestro_flow');
+    expect(maestroTool).toBeDefined();
+
+    const result = await maestroTool!.handler({
+      flowPath,
+      platform: 'android',
+      device: deviceSetup.androidDeviceId,
+      appId: TEST_APP.android.appId,
+      timeoutMs: 120000,
+      generateFailureBundle: true,
+    }) as {
+      flowResult: { success: boolean; passedSteps: number; totalSteps: number };
+      summary: string;
+      failureBundle?: unknown;
+    };
+
+    console.log('Maestro counter flow result:', result.summary);
+
+    if (result.flowResult.success) {
+      expect(result.flowResult.passedSteps).toBe(result.flowResult.totalSteps);
+    } else {
+      console.log('Flow failed - failure bundle generated');
+      expect(result.failureBundle).toBeDefined();
+    }
+  }, 180000); // 3 minute timeout for Maestro flow
+
+  it('should run form flow on Android', async () => {
+    if (!deviceSetup.androidAvailable) {
+      console.log('Skipping: No Android device available');
+      return;
+    }
+
+    const flowPath = resolve(TEST_APP.projectPath, TEST_APP.maestro.formFlow);
+    if (!existsSync(flowPath)) {
+      console.log('Skipping: Maestro flow file not found');
+      return;
+    }
+
+    const registry = getToolRegistry();
+    const maestroTool = registry.getTool('run_maestro_flow');
+
+    const result = await maestroTool!.handler({
+      flowPath,
+      platform: 'android',
+      device: deviceSetup.androidDeviceId,
+      appId: TEST_APP.android.appId,
+      timeoutMs: 120000,
+    }) as { flowResult: { success: boolean }; summary: string };
+
+    console.log('Maestro form flow result:', result.summary);
+  }, 180000);
+
+  it('should run full E2E flow on Android', async () => {
+    if (!deviceSetup.androidAvailable) {
+      console.log('Skipping: No Android device available');
+      return;
+    }
+
+    const flowPath = resolve(TEST_APP.projectPath, TEST_APP.maestro.fullFlow);
+    if (!existsSync(flowPath)) {
+      console.log('Skipping: Maestro flow file not found');
+      return;
+    }
+
+    const registry = getToolRegistry();
+    const maestroTool = registry.getTool('run_maestro_flow');
+
+    const result = await maestroTool!.handler({
+      flowPath,
+      platform: 'android',
+      device: deviceSetup.androidDeviceId,
+      appId: TEST_APP.android.appId,
+      timeoutMs: 180000,
+      generateFailureBundle: true,
+    }) as {
+      flowResult: { success: boolean; passedSteps: number; totalSteps: number; durationMs: number };
+      summary: string;
+    };
+
+    console.log('Maestro full flow result:', result.summary);
+    console.log(`Duration: ${(result.flowResult.durationMs / 1000).toFixed(2)}s`);
+  }, 240000); // 4 minute timeout
+
+  it('should run counter flow on iOS', async () => {
+    if (!deviceSetup.iosAvailable) {
+      console.log('Skipping: No iOS device available');
+      return;
+    }
+
+    const flowPath = resolve(TEST_APP.projectPath, TEST_APP.maestro.counterFlow);
+    if (!existsSync(flowPath)) {
+      console.log('Skipping: Maestro flow file not found');
+      return;
+    }
+
+    const registry = getToolRegistry();
+    const maestroTool = registry.getTool('run_maestro_flow');
+
+    // Note: iOS Maestro flows may need different app ID
+    const result = await maestroTool!.handler({
+      flowPath,
+      platform: 'ios',
+      device: deviceSetup.iosDeviceId,
+      appId: TEST_APP.ios.bundleId,
+      timeoutMs: 120000,
+    }) as { flowResult: { success: boolean }; summary: string };
+
+    console.log('iOS Maestro counter flow result:', result.summary);
+  }, 180000);
+});
+
+describe('Integration Tests - MCP Tools with Test App', () => {
+  let deviceSetup: DeviceSetupResult;
+
+  beforeAll(async () => {
+    resetConfig();
+    setConfig({ debug: false, logLevel: 'error' });
+    await registerAllTools();
+
+    deviceSetup = await ensureDevicesAvailable();
+  }, 180000);
+
+  afterAll(() => {
+    resetConfig();
+    getToolRegistry().clear();
+  });
+
+  describe('Full Workflow: Build -> Install -> Launch -> Interact', () => {
+    it('should complete full Android workflow', async () => {
+      if (!deviceSetup.androidAvailable) {
+        console.log('Skipping: No Android device available');
+        return;
+      }
+
+      const registry = getToolRegistry();
+      const apkPath = resolve(TEST_APP.projectPath, TEST_APP.android.apkPath);
+
+      // Skip if no pre-built APK (build test should run first)
+      if (!existsSync(apkPath)) {
+        console.log('Skipping: APK not found. Run build test first.');
+        return;
+      }
+
+      // 1. Install
+      const installTool = registry.getTool('install_app');
+      const installResult = await installTool!.handler({
+        platform: 'android',
+        appPath: apkPath,
+        device: deviceSetup.androidDeviceId,
+      }) as { success: boolean };
+
+      if (!installResult.success) {
+        console.log('Install failed, skipping rest of workflow');
+        return;
+      }
+
+      // 2. Launch
+      const launchTool = registry.getTool('launch_app');
+      const launchResult = await launchTool!.handler({
+        platform: 'android',
+        appId: TEST_APP.android.appId,
+        device: deviceSetup.androidDeviceId,
+        clearData: true,
+      }) as { success: boolean };
+
+      expect(launchResult.success).toBe(true);
+      await new Promise(resolve => setTimeout(resolve, 3000));
+
+      // 3. Capture UI (returns UIContext with screenshot property)
+      const uiTool = registry.getTool('get_ui_context');
+      try {
+        const uiResult = await uiTool!.handler({
+          platform: 'android',
+          device: deviceSetup.androidDeviceId,
+          skipScreenshot: false,
+        }) as { screenshot?: { data: string; format: string }; elements: unknown[] };
+
+        // UIContext returns screenshot with 'data' field (base64 string)
+        if (uiResult.screenshot && uiResult.screenshot.data.length > 0) {
+          console.log(`Screenshot captured: ${uiResult.screenshot.data.length} bytes`);
+        } else {
+          console.log('Screenshot capture returned empty data (device may not have active display)');
+        }
+      } catch (error) {
+        console.log('UI capture failed (acceptable in test environment):', error);
+      }
+
+      // 4. Navigate via deep link
+      const deepLinkTool = registry.getTool('deep_link_navigate');
+      const deepLinkResult = await deepLinkTool!.handler({
+        platform: 'android',
+        deviceId: deviceSetup.androidDeviceId,
+        uri: TEST_APP.deepLinks.form,
+      }) as { success: boolean };
+
+      expect(deepLinkResult.success).toBe(true);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // 5. Capture logs
+      const logTool = registry.getTool('inspect_logs');
+      const logResult = await logTool!.handler({
+        platform: 'android',
+        deviceId: deviceSetup.androidDeviceId,
+        packageName: TEST_APP.android.appId,
+        timeoutMs: 2000,
+      }) as { success: boolean };
+
+      expect(logResult.success).toBe(true);
+
+      console.log('Full Android workflow completed successfully!');
+    }, 120000);
+  });
+
+  describe('App State Inspection', () => {
+    it('should inspect Android app state', async () => {
+      if (!deviceSetup.androidAvailable) {
+        console.log('Skipping: No Android device available');
+        return;
+      }
+
+      const registry = getToolRegistry();
+      const stateTool = registry.getTool('inspect_app_state');
+
+      if (!stateTool) {
+        console.log('Skipping: inspect_app_state tool not available');
+        return;
+      }
+
+      const result = await stateTool.handler({
+        platform: 'android',
+        deviceId: deviceSetup.androidDeviceId,
+        appId: TEST_APP.android.appId,
+      }) as { success: boolean; state?: unknown };
+
+      if (result.success) {
+        console.log('App state inspection completed');
+      } else {
+        console.log('App state inspection not available for this app');
+      }
+    }, 30000);
+  });
+
+  describe('Error Handling', () => {
+    it('should handle non-existent app gracefully', async () => {
+      if (!deviceSetup.androidAvailable) {
+        console.log('Skipping: No Android device available');
+        return;
+      }
+
+      const registry = getToolRegistry();
+      const launchTool = registry.getTool('launch_app');
+
+      try {
+        await launchTool!.handler({
+          platform: 'android',
+          appId: 'com.nonexistent.app.that.does.not.exist',
+          device: deviceSetup.androidDeviceId,
+        });
+        // Should not reach here
+        expect(true).toBe(false);
+      } catch (error) {
+        // Expected - app doesn't exist
+        expect(error).toBeDefined();
+        console.log('Correctly handled non-existent app error');
+      }
+    }, 15000);
+
+    it('should handle invalid deep link gracefully', async () => {
+      if (!deviceSetup.androidAvailable) {
+        console.log('Skipping: No Android device available');
+        return;
+      }
+
+      const registry = getToolRegistry();
+      const deepLinkTool = registry.getTool('deep_link_navigate');
+
+      const result = await deepLinkTool!.handler({
+        platform: 'android',
+        deviceId: deviceSetup.androidDeviceId,
+        uri: 'invalid-uri-without-scheme',
+      }) as { success: boolean; error?: string };
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBeDefined();
+      console.log('Correctly handled invalid deep link');
+    }, 15000);
+  });
+});

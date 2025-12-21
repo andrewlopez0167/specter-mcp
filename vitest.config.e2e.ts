@@ -5,12 +5,12 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: ['tests/e2e/**/*.test.ts'],
-    testTimeout: 60000,
-    hookTimeout: 30000,
+    testTimeout: 300000, // 5 minutes default (individual tests can override)
+    hookTimeout: 180000, // 3 minutes for device launch
     pool: 'forks',
     poolOptions: {
       forks: {
-        singleFork: true,
+        singleFork: true, // Sequential execution to prevent resource conflicts
       },
     },
   },

@@ -2,80 +2,28 @@
  * Real Device E2E Tests
  * Tests that run against actual Android emulators and iOS simulators
  *
- * Prerequisites:
- * - Android: emulator running (adb devices shows device)
- * - iOS: simulator booted (xcrun simctl list shows Booted device)
+ * Auto-launches emulators/simulators if none are running.
  */
 
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { getToolRegistry, registerAllTools } from '../../src/tools/register.js';
 import { resetConfig, setConfig } from '../../src/config.js';
-import { executeShell } from '../../src/utils/shell.js';
-
-// Check device availability before running tests
-async function isAndroidAvailable(): Promise<boolean> {
-  try {
-    const result = await executeShell('adb', ['devices']);
-    const lines = result.stdout.split('\n').filter(l => l.includes('device') && !l.includes('List'));
-    return lines.length > 0;
-  } catch {
-    return false;
-  }
-}
-
-async function isIOSAvailable(): Promise<boolean> {
-  try {
-    const result = await executeShell('xcrun', ['simctl', 'list', 'devices']);
-    return result.stdout.includes('(Booted)');
-  } catch {
-    return false;
-  }
-}
-
-async function getBootedIOSDevice(): Promise<string | null> {
-  try {
-    const result = await executeShell('xcrun', ['simctl', 'list', 'devices']);
-    const bootedMatch = result.stdout.match(/([A-F0-9-]{36})\) \(Booted\)/);
-    return bootedMatch ? bootedMatch[1] : null;
-  } catch {
-    return null;
-  }
-}
-
-async function getAndroidDeviceId(): Promise<string | null> {
-  try {
-    const result = await executeShell('adb', ['devices']);
-    const lines = result.stdout.split('\n');
-    for (const line of lines) {
-      const match = line.match(/^([\w-]+)\s+device$/);
-      if (match) return match[1];
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
+import {
+  ensureDevicesAvailable,
+  type DeviceSetupResult,
+} from './setup.js';
 
 describe('Real Device E2E Tests', () => {
-  let androidAvailable: boolean;
-  let iosAvailable: boolean;
-  let androidDeviceId: string | null;
-  let iosDeviceId: string | null;
+  let deviceSetup: DeviceSetupResult;
 
   beforeAll(async () => {
     resetConfig();
     setConfig({ debug: false, logLevel: 'error' });
     await registerAllTools();
 
-    // Check device availability
-    androidAvailable = await isAndroidAvailable();
-    iosAvailable = await isIOSAvailable();
-    androidDeviceId = await getAndroidDeviceId();
-    iosDeviceId = await getBootedIOSDevice();
-
-    console.log(`Android available: ${androidAvailable} (${androidDeviceId})`);
-    console.log(`iOS available: ${iosAvailable} (${iosDeviceId})`);
-  });
+    // Auto-launch emulators/simulators if not running
+    deviceSetup = await ensureDevicesAvailable();
+  }, 180000); // 3 minute timeout for device launch
 
   afterAll(() => {
     resetConfig();
@@ -84,7 +32,7 @@ describe('Real Device E2E Tests', () => {
 
   describe('list_devices', () => {
     it('should list Android devices when available', async () => {
-      if (!androidAvailable) {
+      if (!deviceSetup.androidAvailable) {
         console.log('Skipping: No Android device available');
         return;
       }
@@ -104,7 +52,7 @@ describe('Real Device E2E Tests', () => {
     });
 
     it('should list iOS devices when available', async () => {
-      if (!iosAvailable) {
+      if (!deviceSetup.iosAvailable) {
         console.log('Skipping: No iOS device available');
         return;
       }
@@ -139,7 +87,7 @@ describe('Real Device E2E Tests', () => {
 
   describe('manage_env', () => {
     it('should check Android emulator status', async () => {
-      if (!androidAvailable) {
+      if (!deviceSetup.androidAvailable) {
         console.log('Skipping: No Android device available');
         return;
       }
@@ -152,7 +100,7 @@ describe('Real Device E2E Tests', () => {
       const result = await tool!.handler({
         action: 'boot',
         platform: 'android',
-        device: androidDeviceId,
+        device: deviceSetup.androidDeviceId,
       }) as { success: boolean; message?: string };
 
       // Should succeed or indicate device is already running
@@ -160,7 +108,7 @@ describe('Real Device E2E Tests', () => {
     });
 
     it('should check iOS simulator status', async () => {
-      if (!iosAvailable) {
+      if (!deviceSetup.iosAvailable) {
         console.log('Skipping: No iOS device available');
         return;
       }
@@ -172,7 +120,7 @@ describe('Real Device E2E Tests', () => {
       const result = await tool!.handler({
         action: 'boot',
         platform: 'ios',
-        device: iosDeviceId,
+        device: deviceSetup.iosDeviceId,
       }) as { success: boolean; message?: string };
 
       expect(result).toHaveProperty('success');
@@ -181,7 +129,7 @@ describe('Real Device E2E Tests', () => {
 
   describe('inspect_logs', () => {
     it('should stream Android logs', async () => {
-      if (!androidAvailable) {
+      if (!deviceSetup.androidAvailable) {
         console.log('Skipping: No Android device available');
         return;
       }
@@ -192,7 +140,7 @@ describe('Real Device E2E Tests', () => {
 
       const result = await tool!.handler({
         platform: 'android',
-        deviceId: androidDeviceId,
+        deviceId: deviceSetup.androidDeviceId,
         timeoutMs: 2000,  // Short timeout for test
       }) as { success: boolean; logs?: string[] };
 
@@ -201,7 +149,7 @@ describe('Real Device E2E Tests', () => {
     });
 
     it('should stream iOS logs', async () => {
-      if (!iosAvailable) {
+      if (!deviceSetup.iosAvailable) {
         console.log('Skipping: No iOS device available');
         return;
       }
@@ -212,7 +160,7 @@ describe('Real Device E2E Tests', () => {
 
       const result = await tool!.handler({
         platform: 'ios',
-        deviceId: iosDeviceId,
+        deviceId: deviceSetup.iosDeviceId,
         timeoutMs: 2000,
       }) as { success: boolean; logs?: string[] };
 
@@ -222,7 +170,7 @@ describe('Real Device E2E Tests', () => {
 
   describe('get_ui_context (requires running app)', () => {
     it('should capture Android screenshot', async () => {
-      if (!androidAvailable) {
+      if (!deviceSetup.androidAvailable) {
         console.log('Skipping: No Android device available');
         return;
       }
@@ -233,7 +181,7 @@ describe('Real Device E2E Tests', () => {
 
       const result = await tool!.handler({
         platform: 'android',
-        deviceId: androidDeviceId,
+        deviceId: deviceSetup.androidDeviceId,
         captureScreenshot: true,
         captureHierarchy: false,
       }) as { success: boolean; screenshot?: string; error?: string };
@@ -248,7 +196,7 @@ describe('Real Device E2E Tests', () => {
     });
 
     it('should capture iOS screenshot', async () => {
-      if (!iosAvailable) {
+      if (!deviceSetup.iosAvailable) {
         console.log('Skipping: No iOS device available');
         return;
       }
@@ -259,7 +207,7 @@ describe('Real Device E2E Tests', () => {
 
       const result = await tool!.handler({
         platform: 'ios',
-        deviceId: iosDeviceId,
+        deviceId: deviceSetup.iosDeviceId,
         captureScreenshot: true,
         captureHierarchy: false,
       }) as { success: boolean; screenshot?: string; error?: string };
@@ -274,7 +222,7 @@ describe('Real Device E2E Tests', () => {
 
   describe('interact_with_ui', () => {
     it('should execute tap on Android', async () => {
-      if (!androidAvailable) {
+      if (!deviceSetup.androidAvailable) {
         console.log('Skipping: No Android device available');
         return;
       }
@@ -286,7 +234,7 @@ describe('Real Device E2E Tests', () => {
       // Tap in center of screen (safe location)
       const result = await tool!.handler({
         platform: 'android',
-        deviceId: androidDeviceId,
+        deviceId: deviceSetup.androidDeviceId,
         action: 'tap',
         x: 540,
         y: 1000,
@@ -296,7 +244,7 @@ describe('Real Device E2E Tests', () => {
     });
 
     it('should execute tap on iOS', async () => {
-      if (!iosAvailable) {
+      if (!deviceSetup.iosAvailable) {
         console.log('Skipping: No iOS device available');
         return;
       }
@@ -309,7 +257,7 @@ describe('Real Device E2E Tests', () => {
       // This test validates the tool handles the platform correctly
       const result = await tool!.handler({
         platform: 'ios',
-        deviceId: iosDeviceId,
+        deviceId: deviceSetup.iosDeviceId,
         action: 'tap',
         x: 200,
         y: 400,
@@ -322,7 +270,7 @@ describe('Real Device E2E Tests', () => {
 
   describe('deep_link_navigate', () => {
     it('should open deep link on Android', async () => {
-      if (!androidAvailable) {
+      if (!deviceSetup.androidAvailable) {
         console.log('Skipping: No Android device available');
         return;
       }
@@ -334,7 +282,7 @@ describe('Real Device E2E Tests', () => {
       // Use a safe system URL
       const result = await tool!.handler({
         platform: 'android',
-        deviceId: androidDeviceId,
+        deviceId: deviceSetup.androidDeviceId,
         uri: 'https://google.com',
       }) as { success: boolean };
 
@@ -342,7 +290,7 @@ describe('Real Device E2E Tests', () => {
     });
 
     it('should open deep link on iOS', async () => {
-      if (!iosAvailable) {
+      if (!deviceSetup.iosAvailable) {
         console.log('Skipping: No iOS device available');
         return;
       }
@@ -353,7 +301,7 @@ describe('Real Device E2E Tests', () => {
 
       const result = await tool!.handler({
         platform: 'ios',
-        deviceId: iosDeviceId,
+        deviceId: deviceSetup.iosDeviceId,
         uri: 'https://apple.com',
       }) as { success: boolean };
 
