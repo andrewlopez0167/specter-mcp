@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.2](https://github.com/abd3lraouf/specter-mcp/compare/specter-mcp-v1.1.1...specter-mcp-v1.1.2) (2025-12-21)
+
+
+### Bug Fixes
+
+* Re-trigger release after CI improvements ([bd6742b](https://github.com/abd3lraouf/specter-mcp/commit/bd6742babd2c66991cf9c1c576f9c6bc9ceb8ab6))
+* Remove tests from prepublishOnly hook ([1daf1a0](https://github.com/abd3lraouf/specter-mcp/commit/1daf1a08ace1e07f0e47a1625837b29553603f50))
+
 ## [1.1.1](https://github.com/abd3lraouf/specter-mcp/compare/specter-mcp-v1.1.0...specter-mcp-v1.1.1) (2025-12-21)
 
 
