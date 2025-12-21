@@ -92,10 +92,8 @@ describe('Android SharedPreferences Reader Integration', () => {
 
   describe('isAppDebuggable', () => {
     it('should detect debuggable app', async () => {
-      if (!emulatorAvailable || !appInstalled) {
-        console.log('Skipping: No emulator or app');
-        return;
-      }
+      expect(emulatorAvailable, 'No Android emulator available').toBe(true);
+      expect(appInstalled, `App ${PACKAGE_NAME} not installed`).toBe(true);
 
       const isDebuggable = await isAppDebuggable(PACKAGE_NAME, deviceId ?? undefined);
 
@@ -104,10 +102,7 @@ describe('Android SharedPreferences Reader Integration', () => {
     });
 
     it('should return false for non-existent package', async () => {
-      if (!emulatorAvailable) {
-        console.log('Skipping: No emulator');
-        return;
-      }
+      expect(emulatorAvailable, 'No Android emulator available').toBe(true);
 
       const isDebuggable = await isAppDebuggable('com.nonexistent.app', deviceId ?? undefined);
       expect(isDebuggable).toBe(false);
@@ -128,10 +123,8 @@ describe('Android SharedPreferences Reader Integration', () => {
 
   describe('readSharedPreferences', () => {
     it('should read preferences from SpecterTestSubject', async () => {
-      if (!emulatorAvailable || !appInstalled) {
-        console.log('Skipping: No emulator or app');
-        return;
-      }
+      expect(emulatorAvailable, 'No Android emulator available').toBe(true);
+      expect(appInstalled, `App ${PACKAGE_NAME} not installed`).toBe(true);
 
       const prefs = await readSharedPreferences(PACKAGE_NAME, {
         deviceId: deviceId ?? undefined,
@@ -154,10 +147,8 @@ describe('Android SharedPreferences Reader Integration', () => {
     });
 
     it('should read specific preferences file by name', async () => {
-      if (!emulatorAvailable || !appInstalled) {
-        console.log('Skipping: No emulator or app');
-        return;
-      }
+      expect(emulatorAvailable, 'No Android emulator available').toBe(true);
+      expect(appInstalled, `App ${PACKAGE_NAME} not installed`).toBe(true);
 
       const prefs = await readSharedPreferences(PACKAGE_NAME, {
         deviceId: deviceId ?? undefined,
@@ -171,10 +162,7 @@ describe('Android SharedPreferences Reader Integration', () => {
     });
 
     it('should return empty array for non-existent package', async () => {
-      if (!emulatorAvailable) {
-        console.log('Skipping: No emulator');
-        return;
-      }
+      expect(emulatorAvailable, 'No Android emulator available').toBe(true);
 
       const prefs = await readSharedPreferences('com.nonexistent.app', {
         deviceId: deviceId ?? undefined,
@@ -186,10 +174,8 @@ describe('Android SharedPreferences Reader Integration', () => {
 
   describe('readPreference', () => {
     it('should read specific preference key', async () => {
-      if (!emulatorAvailable || !appInstalled) {
-        console.log('Skipping: No emulator or app');
-        return;
-      }
+      expect(emulatorAvailable, 'No Android emulator available').toBe(true);
+      expect(appInstalled, `App ${PACKAGE_NAME} not installed`).toBe(true);
 
       // Try to read app_initialized which is set on first launch
       const entry = await readPreference(PACKAGE_NAME, PREFS_NAME, 'app_initialized', {
@@ -203,10 +189,8 @@ describe('Android SharedPreferences Reader Integration', () => {
     });
 
     it('should return null for non-existent key', async () => {
-      if (!emulatorAvailable || !appInstalled) {
-        console.log('Skipping: No emulator or app');
-        return;
-      }
+      expect(emulatorAvailable, 'No Android emulator available').toBe(true);
+      expect(appInstalled, `App ${PACKAGE_NAME} not installed`).toBe(true);
 
       const entry = await readPreference(PACKAGE_NAME, PREFS_NAME, 'definitely_not_a_real_key', {
         deviceId: deviceId ?? undefined,

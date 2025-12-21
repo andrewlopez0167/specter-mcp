@@ -84,15 +84,10 @@ describe('iOS Xcode Build Integration', () => {
 
   describe('buildXcode', () => {
     it('should build iOS app successfully', async () => {
-      if (os.platform() !== 'darwin') {
-        console.log('Skipping: Not macOS');
-        return;
-      }
-
-      if (!xcodeAvailable || !projectReady || !simulatorName) {
-        console.log('Skipping: Xcode, project, or simulator not available');
-        return;
-      }
+      expect(os.platform(), 'This test requires macOS').toBe('darwin');
+      expect(xcodeAvailable, 'Xcode not available').toBe(true);
+      expect(projectReady, `Project not found at ${TEST_PROJECT_PATH}`).toBe(true);
+      expect(simulatorName, 'No iOS simulator available').toBeTruthy();
 
       const options: XcodeBuildOptions = {
         projectPath: TEST_PROJECT_PATH,
@@ -124,15 +119,10 @@ describe('iOS Xcode Build Integration', () => {
     }, 600000);
 
     it('should clean and build', async () => {
-      if (os.platform() !== 'darwin') {
-        console.log('Skipping: Not macOS');
-        return;
-      }
-
-      if (!xcodeAvailable || !projectReady || !simulatorName) {
-        console.log('Skipping: Xcode, project, or simulator not available');
-        return;
-      }
+      expect(os.platform(), 'This test requires macOS').toBe('darwin');
+      expect(xcodeAvailable, 'Xcode not available').toBe(true);
+      expect(projectReady, `Project not found at ${TEST_PROJECT_PATH}`).toBe(true);
+      expect(simulatorName, 'No iOS simulator available').toBeTruthy();
 
       const options: XcodeBuildOptions = {
         projectPath: TEST_PROJECT_PATH,

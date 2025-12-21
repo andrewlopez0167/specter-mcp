@@ -48,10 +48,8 @@ describe('Android Test Runner Integration', () => {
 
   describe('runGradleTests', () => {
     it('should run shared module tests', async () => {
-      if (!gradleAvailable || !projectReady) {
-        console.log('Skipping: Gradle or project not available');
-        return;
-      }
+      expect(gradleAvailable, 'Gradle/Java not available').toBe(true);
+      expect(projectReady, `Project not found at ${TEST_PROJECT_PATH}`).toBe(true);
 
       const result = await runGradleTests({
         projectPath: TEST_PROJECT_PATH,
@@ -76,10 +74,8 @@ describe('Android Test Runner Integration', () => {
     }, 300000);
 
     it('should run specific test class', async () => {
-      if (!gradleAvailable || !projectReady) {
-        console.log('Skipping: Gradle or project not available');
-        return;
-      }
+      expect(gradleAvailable, 'Gradle/Java not available').toBe(true);
+      expect(projectReady, `Project not found at ${TEST_PROJECT_PATH}`).toBe(true);
 
       const result = await runGradleTests({
         projectPath: TEST_PROJECT_PATH,

@@ -18,31 +18,61 @@
 
 ---
 
-## Overview
+## What is Specter MCP?
 
-Specter MCP enables AI agents to build, test, debug, and interact with Android and iOS applications through a standardized [Model Context Protocol (MCP)](https://modelcontextprotocol.io) interface. It provides 15 specialized tools organized into categories for complete mobile development automation.
+Specter MCP enables AI agents (Claude, GPT, etc.) to **build, test, debug, and interact** with Android and iOS applications through the [Model Context Protocol](https://modelcontextprotocol.io). Think of it as giving your AI assistant the ability to:
 
-## Features
+- Build and deploy your mobile apps
+- Take screenshots and interact with UI elements
+- Run unit tests and E2E tests (Maestro)
+- Analyze crash logs and debug issues
+- Inspect app state (preferences, databases, logs)
 
-- **Build Pipeline** — Build, install, and launch apps on Android/iOS
-- **UI Automation** — Capture screenshots, UI hierarchies, and perform interactions
-- **Testing** — Run unit tests, Maestro E2E flows, and linters
-- **Environment Management** — List/boot devices, clean projects
-- **Crash Analysis** — Cross-platform crash analysis (iOS crash files + symbolication, Android logcat)
-- **Deep Linking** — Navigate apps via deep links with intent extras
-- **App State Inspection** — Read preferences, databases, and logs
+## Prerequisites
 
-## Quick Start
+| Requirement | Version | Verify Command |
+|-------------|---------|----------------|
+| Node.js | 20+ | `node --version` |
+| Android SDK | Any | `adb --version` |
+| Xcode CLI (macOS) | Any | `xcrun --version` |
+| Maestro (optional) | Any | `maestro --version` |
 
-### Installation
+### Quick Setup
+
+```bash
+# Android SDK (if not installed via Android Studio)
+export ANDROID_SDK_ROOT="$HOME/Library/Android/sdk"
+export PATH="$PATH:$ANDROID_SDK_ROOT/platform-tools"
+
+# iOS (macOS only)
+xcode-select --install
+sudo xcodebuild -license accept
+
+# Maestro (optional, for E2E testing)
+curl -Ls "https://get.maestro.mobile.dev" | bash
+```
+
+## Installation
+
+### Option 1: npm (Recommended)
 
 ```bash
 npm install -g specter-mcp
 ```
 
-### Claude Desktop Configuration
+### Option 2: From Source
 
-Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS):
+```bash
+git clone https://github.com/abd3lraouf/specter-mcp.git
+cd specter-mcp
+npm install && npm run build
+```
+
+## Configuration
+
+### Claude Desktop
+
+Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 ```json
 {
@@ -54,107 +84,194 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
 }
 ```
 
-Restart Claude Desktop. Ask Claude: *"List my available Android and iOS devices"*
+### Claude Code
 
-## Documentation
+Add to your project's `.mcp.json`:
 
-- [Getting Started](./docs/getting-started.md)
-- [Configuration Guide](./docs/configuration.md)
-- [API Reference](./docs/API.md)
+```json
+{
+  "mcpServers": {
+    "specter-mcp": {
+      "command": "specter-mcp"
+    }
+  }
+}
+```
 
-### Tool Guides
+### With Environment Variables
 
-- [Build Tools](./docs/tools/build-tools.md) — build_app, install_app, launch_app
-- [UI Tools](./docs/tools/ui-tools.md) — get_ui_context, interact_with_ui
-- [Testing Tools](./docs/tools/testing-tools.md) — run_unit_tests, run_maestro_flow, run_linter
-- [Environment Tools](./docs/tools/environment-tools.md) — list_devices, manage_env, clean_project
-- [Observability Tools](./docs/tools/observability-tools.md) — analyze_crash, inspect_logs, inspect_app_state, deep_link_navigate
+```json
+{
+  "mcpServers": {
+    "specter-mcp": {
+      "command": "specter-mcp",
+      "env": {
+        "SPECTER_DEBUG": "true",
+        "ANDROID_SDK_ROOT": "/path/to/android/sdk"
+      }
+    }
+  }
+}
+```
 
-## Available Tools
+### From Source
 
-| Category | Tools |
-|----------|-------|
-| **Build** | `build_app` `install_app` `launch_app` |
-| **UI** | `get_ui_context` `interact_with_ui` |
-| **Testing** | `run_unit_tests` `run_maestro_flow` `run_linter` |
-| **Environment** | `list_devices` `manage_env` `clean_project` |
-| **Observability** | `analyze_crash` `inspect_logs` `inspect_app_state` `deep_link_navigate` |
+```json
+{
+  "mcpServers": {
+    "specter-mcp": {
+      "command": "node",
+      "args": ["/absolute/path/to/specter-mcp/dist/index.js"]
+    }
+  }
+}
+```
 
-## Example Usage
+## Available Tools (15)
 
-### Build and Launch
+| Category | Tool | Description |
+|----------|------|-------------|
+| **Build** | `build_app` | Build Android/iOS app (debug/release) |
+| | `install_app` | Install APK or .app on device |
+| | `launch_app` | Launch installed app |
+| **UI** | `get_ui_context` | Screenshot + UI hierarchy |
+| | `interact_with_ui` | Tap, swipe, input text |
+| **Testing** | `run_unit_tests` | Run unit tests |
+| | `run_maestro_flow` | Run Maestro E2E flows |
+| | `run_linter` | Detekt, SwiftLint, ktlint |
+| **Environment** | `list_devices` | List emulators/simulators |
+| | `manage_env` | Boot/shutdown devices |
+| | `clean_project` | Clean build caches |
+| **Debug** | `analyze_crash` | Parse crash logs, symbolicate |
+| | `inspect_logs` | Filter device logs |
+| | `inspect_app_state` | Read prefs, databases |
+| **Navigation** | `deep_link_navigate` | Open deep links |
+
+## Usage Examples
+
+### Build & Deploy
 
 ```
-You: Build my Android app and launch it on the emulator
+You: Build my Android app in debug mode and install it
 
-Claude: I'll build and launch your app.
-[Uses build_app, install_app, launch_app]
+Claude: I'll build and deploy your app.
+→ build_app(platform: "android", variant: "debug")
+→ install_app(platform: "android", appPath: "...")
+→ launch_app(platform: "android", appId: "com.example.app")
 ```
 
 ### Debug a Crash
 
 ```
-You: My iOS app is crashing. What's wrong?
+You: My iOS app crashed, help me debug it
 
-Claude: Let me analyze the crash logs.
-[Uses analyze_crash, inspect_logs]
+Claude: Let me analyze the crash.
+→ analyze_crash(platform: "ios", appId: "com.example.app")
+→ inspect_logs(platform: "ios", minLevel: "error")
 ```
 
-### UI Automation
+### UI Testing
 
 ```
 You: Take a screenshot and tap the login button
 
-Claude: I'll capture the UI and perform the tap.
-[Uses get_ui_context, interact_with_ui]
+Claude: I'll capture the UI and interact with it.
+→ get_ui_context(platform: "android")
+→ interact_with_ui(platform: "android", action: "tap", element: "Login")
 ```
 
-## Requirements
+### Run E2E Tests
 
-- **Node.js 20+**
-- **Android SDK** with `adb` in PATH (for Android tools)
-- **Xcode Command Line Tools** (for iOS tools, macOS only)
-- **Maestro CLI** (optional, for E2E testing)
+```
+You: Run my login flow test on both platforms
+
+Claude: Running Maestro flows.
+→ run_maestro_flow(platform: "android", flowPath: "./maestro/login.yaml")
+→ run_maestro_flow(platform: "ios", flowPath: "./maestro/login.yaml")
+```
+
+## Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SPECTER_DEBUG` | `false` | Enable debug logging |
+| `SPECTER_LOG_LEVEL` | `info` | Log level (error/warn/info/debug) |
+| `SPECTER_TIMEOUT` | `60000` | Default timeout (ms) |
+| `ANDROID_SDK_ROOT` | auto | Android SDK path |
+| `SPECTER_ANDROID_DEVICE` | - | Default Android device |
+| `SPECTER_IOS_DEVICE` | `booted` | Default iOS simulator |
+
+## Troubleshooting
+
+### "adb: command not found"
+
+```bash
+export PATH="$PATH:$ANDROID_SDK_ROOT/platform-tools"
+```
+
+### "No devices found"
+
+```bash
+# Android: Start emulator
+emulator -avd Pixel_6_API_34
+
+# iOS: Boot simulator
+xcrun simctl boot "iPhone 15 Pro"
+```
+
+### "xcrun: error: unable to find utility"
+
+```bash
+xcode-select --install
+```
+
+### Debug Mode
+
+```json
+{
+  "env": {
+    "SPECTER_DEBUG": "true",
+    "SPECTER_LOG_LEVEL": "debug"
+  }
+}
+```
+
+## Project Structure
+
+```
+src/
+├── index.ts              # MCP server entry
+├── config.ts             # Configuration
+├── platforms/            # Android/iOS utilities
+│   ├── android/          # ADB, Gradle, logcat
+│   └── ios/              # simctl, xcodebuild, crash parsing
+├── tools/                # MCP tool implementations
+│   ├── build/            # build_app, install_app, launch_app
+│   ├── ui/               # get_ui_context, interact_with_ui
+│   ├── testing/          # run_unit_tests, run_maestro_flow, run_linter
+│   ├── environment/      # list_devices, manage_env, clean_project
+│   ├── crash/            # analyze_crash
+│   ├── navigation/       # deep_link_navigate
+│   └── observability/    # inspect_logs, inspect_app_state
+└── utils/                # Shell, image processing, XML parsing
+```
 
 ## Development
 
 ```bash
-# Clone and install
-git clone https://github.com/abd3lraouf/specter-mcp.git
-cd specter-mcp
-npm install
-
-# Build
-npm run build
-
-# Test
-npm test
-npm run test:coverage
-
-# Lint
-npm run lint
-npm run typecheck
+npm install          # Install dependencies
+npm run build        # Build TypeScript
+npm test             # Run tests (695 tests)
+npm run test:coverage # Coverage report
+npm run lint         # ESLint
+npm run typecheck    # Type check
 ```
 
-## Architecture
+## Documentation
 
-```
-src/
-├── index.ts              # MCP server entry point
-├── config.ts             # Environment configuration
-├── models/               # Type definitions and errors
-├── platforms/            # Android/iOS platform utilities
-│   ├── android/          # ADB, Gradle, logcat, preferences
-│   └── ios/              # simctl, xcodebuild, oslog, crash parsing
-├── queue/                # Request queue and executor
-├── routing/              # Model routing dispatcher
-├── tools/                # MCP tool implementations
-└── utils/                # Shell execution, image processing
-```
-
-## Contributing
-
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for development setup and guidelines.
+- [API Reference](./docs/API.md) — All 15 tools with parameters
+- [Configuration Guide](./docs/configuration.md) — Environment variables & setup
+- [Getting Started](./docs/getting-started.md) — First steps
 
 ## License
 

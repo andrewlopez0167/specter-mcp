@@ -49,10 +49,8 @@ describe('Android Gradle Build Integration', () => {
 
   describe('buildGradle', () => {
     it('should build debug APK successfully', async () => {
-      if (!gradleAvailable || !projectReady) {
-        console.log('Skipping: Gradle or project not available');
-        return;
-      }
+      expect(gradleAvailable, 'Gradle/Java not available').toBe(true);
+      expect(projectReady, `Project not found at ${TEST_PROJECT_PATH}`).toBe(true);
 
       const options: GradleBuildOptions = {
         projectPath: TEST_PROJECT_PATH,
@@ -83,10 +81,8 @@ describe('Android Gradle Build Integration', () => {
     }, 600000);
 
     it('should clean and build', async () => {
-      if (!gradleAvailable || !projectReady) {
-        console.log('Skipping: Gradle or project not available');
-        return;
-      }
+      expect(gradleAvailable, 'Gradle/Java not available').toBe(true);
+      expect(projectReady, `Project not found at ${TEST_PROJECT_PATH}`).toBe(true);
 
       const options: GradleBuildOptions = {
         projectPath: TEST_PROJECT_PATH,

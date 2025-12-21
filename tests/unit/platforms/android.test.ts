@@ -292,7 +292,7 @@ emulator-5554\tdevice product:sdk model:Pixel_7 device:emu`,
     it('should dump UI hierarchy XML', async () => {
       const mockXml = '<?xml version="1.0"?><hierarchy rotation="0"></hierarchy>';
       mockedExecuteShell.mockResolvedValue({
-        stdout: `UI hierchary dumped to: /dev/tty\n${mockXml}`,
+        stdout: `UI hierchary dumped to: /sdcard/specter-ui-dump.xml\n${mockXml}`,
         stderr: '',
         exitCode: 0,
       });
@@ -304,9 +304,7 @@ emulator-5554\tdevice product:sdk model:Pixel_7 device:emu`,
         '-s',
         'emulator-5554',
         'shell',
-        'uiautomator',
-        'dump',
-        '/dev/tty',
+        'uiautomator dump /sdcard/specter-ui-dump.xml && cat /sdcard/specter-ui-dump.xml',
       ]);
     });
 

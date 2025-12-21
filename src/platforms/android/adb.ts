@@ -160,19 +160,23 @@ export async function takeScreenshot(deviceId?: string): Promise<Buffer> {
  * Dump UI hierarchy
  */
 export async function dumpUiHierarchy(deviceId?: string): Promise<string> {
-  const args = deviceId
-    ? ['-s', deviceId, 'shell', 'uiautomator', 'dump', '/dev/tty']
-    : ['shell', 'uiautomator', 'dump', '/dev/tty'];
+  const tmpFile = '/sdcard/specter-ui-dump.xml';
+  const deviceArgs = deviceId ? ['-s', deviceId] : [];
 
-  const result = await executeShell('adb', args);
+  // Dump to temp file and cat it (more reliable than /dev/tty in scripts)
+  const dumpResult = await executeShell('adb', [
+    ...deviceArgs,
+    'shell',
+    `uiautomator dump ${tmpFile} && cat ${tmpFile}`,
+  ]);
 
-  if (result.exitCode !== 0) {
-    throw Errors.shellExecutionFailed('adb uiautomator dump', result.stderr);
+  if (dumpResult.exitCode !== 0) {
+    throw Errors.shellExecutionFailed('adb uiautomator dump', dumpResult.stderr);
   }
 
-  // Output contains "UI hierchary dumped to: /dev/tty" followed by XML
-  const xmlMatch = result.stdout.match(/<\?xml[\s\S]*<\/hierarchy>/);
-  return xmlMatch?.[0] ?? result.stdout;
+  // Extract XML from output (skip the "UI hierarchy dumped to:" message)
+  const xmlMatch = dumpResult.stdout.match(/<\?xml[\s\S]*<\/hierarchy>/);
+  return xmlMatch?.[0] ?? dumpResult.stdout;
 }
 
 /**

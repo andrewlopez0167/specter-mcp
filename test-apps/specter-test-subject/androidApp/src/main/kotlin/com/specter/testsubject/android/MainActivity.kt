@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalComposeUiApi::class)
+
 package com.specter.testsubject.android
 
 import android.content.Context
@@ -10,11 +12,13 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -58,7 +62,9 @@ class MainActivity : ComponentActivity() {
         setContent {
             SpecterTestSubjectTheme {
                 Surface(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .semantics { testTagsAsResourceId = true },
                     color = MaterialTheme.colorScheme.background
                 ) {
                     MainScreen(initialTab = initialTab)
@@ -151,6 +157,7 @@ fun CounterScreen() {
                 modifier = Modifier
                     .size(80.dp)
                     .testTag("btn_decrement")
+                    .semantics { contentDescription = "btn_decrement" }
             ) {
                 Text("-", fontSize = 32.sp)
             }
@@ -165,6 +172,7 @@ fun CounterScreen() {
                 modifier = Modifier
                     .height(80.dp)
                     .testTag("btn_reset")
+                    .semantics { contentDescription = "btn_reset" }
             ) {
                 Text("Reset", fontSize = 16.sp)
             }
@@ -178,6 +186,7 @@ fun CounterScreen() {
                 modifier = Modifier
                     .size(80.dp)
                     .testTag("btn_increment")
+                    .semantics { contentDescription = "btn_increment" }
             ) {
                 Text("+", fontSize = 32.sp)
             }
@@ -226,7 +235,8 @@ fun FormScreen() {
             supportingText = { emailError?.let { Text(it) } },
             modifier = Modifier
                 .fillMaxWidth()
-                .testTag("input_email"),
+                .testTag("input_email")
+                .semantics { contentDescription = "input_email" },
             singleLine = true
         )
 
@@ -243,7 +253,8 @@ fun FormScreen() {
             supportingText = { usernameError?.let { Text(it) } },
             modifier = Modifier
                 .fillMaxWidth()
-                .testTag("input_username"),
+                .testTag("input_username")
+                .semantics { contentDescription = "input_username" },
             singleLine = true
         )
 
@@ -261,7 +272,8 @@ fun FormScreen() {
             visualTransformation = PasswordVisualTransformation(),
             modifier = Modifier
                 .fillMaxWidth()
-                .testTag("input_password"),
+                .testTag("input_password")
+                .semantics { contentDescription = "input_password" },
             singleLine = true
         )
 
@@ -281,6 +293,7 @@ fun FormScreen() {
                 .fillMaxWidth()
                 .height(56.dp)
                 .testTag("btn_submit")
+                .semantics { contentDescription = "btn_submit" }
         ) {
             Text("Submit", fontSize = 18.sp)
         }

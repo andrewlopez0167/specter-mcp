@@ -130,6 +130,7 @@ describe('Android UI Normalizer', () => {
     });
 
     it('should continue without screenshot on capture failure', async () => {
+      // Console output is silenced globally via tests/setup.ts
       mockedListDevices.mockResolvedValue([
         { id: 'emulator-5554', name: 'Pixel_7', status: 'booted' },
       ]);

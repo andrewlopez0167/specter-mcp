@@ -296,10 +296,7 @@ Thread 0 Crashed:
 
   describe('findDSYMInCommonLocations', () => {
     it('should search common dSYM locations', () => {
-      if (os.platform() !== 'darwin') {
-        console.log('Skipping: Not macOS');
-        return;
-      }
+      expect(os.platform(), 'This test requires macOS').toBe('darwin');
 
       // This may or may not find a dSYM depending on build state
       const dsymPath = findDSYMInCommonLocations(BUNDLE_ID, '12345678-1234-1234-1234-123456789012');
@@ -311,10 +308,7 @@ Thread 0 Crashed:
     });
 
     it('should return undefined for non-existent bundle', () => {
-      if (os.platform() !== 'darwin') {
-        console.log('Skipping: Not macOS');
-        return;
-      }
+      expect(os.platform(), 'This test requires macOS').toBe('darwin');
 
       const dsymPath = findDSYMInCommonLocations('com.nonexistent.app', 'fake-uuid');
 
@@ -324,10 +318,8 @@ Thread 0 Crashed:
 
   describe('Real crash log analysis', () => {
     it('should analyze real crash log if available', async () => {
-      if (os.platform() !== 'darwin' || !crashLogDir) {
-        console.log('Skipping: Not macOS or no crash log directory');
-        return;
-      }
+      expect(os.platform(), 'This test requires macOS').toBe('darwin');
+      expect(crashLogDir, 'Crash log directory not available').toBeTruthy();
 
       const crashFile = await findLatestCrashLog(crashLogDir, BUNDLE_ID);
 

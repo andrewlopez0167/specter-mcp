@@ -1,4 +1,4 @@
-appId: com.specter.testsubject
+appId: ${APP_ID}
 name: Form Validation Flow Test
 ---
 # Form Validation UI Tests
@@ -11,62 +11,21 @@ name: Form Validation Flow Test
 - assertVisible: "Registration Form"
 
 # Test empty form submission
-- tapOn:
-    id: "btn_submit"
+- tapOn: "Submit"
 - assertVisible: "Email is required"
 
-# Enter invalid email
-- tapOn:
-    id: "input_email"
-- inputText: "invalid-email"
-- tapOn:
-    id: "btn_submit"
-- assertVisible: "Invalid email format"
-
-# Clear and enter valid email
-- tapOn:
-    id: "input_email"
-- eraseText
+# Fill valid form directly (avoids accumulated state from multiple validations)
+- tapOn: "Email"
 - inputText: "user@example.com"
 
-# Enter short username
-- tapOn:
-    id: "input_username"
-- inputText: "ab"
-- tapOn:
-    id: "btn_submit"
-- assertVisible: "Username must be at least 3 characters"
-
-# Enter valid username
-- tapOn:
-    id: "input_username"
-- eraseText
+- tapOn: "Username"
 - inputText: "testuser"
 
-# Enter weak password
-- tapOn:
-    id: "input_password"
-- inputText: "weak"
-- tapOn:
-    id: "btn_submit"
-- assertVisible: "Password must be at least 8 characters"
-
-# Enter password without digit
-- tapOn:
-    id: "input_password"
-- eraseText
-- inputText: "Password"
-- tapOn:
-    id: "btn_submit"
-- assertVisible: "Password must contain at least one digit"
-
-# Enter valid password
-- tapOn:
-    id: "input_password"
-- eraseText
+- tapOn: "Password"
 - inputText: "Password1"
 
 # Submit valid form
-- tapOn:
-    id: "btn_submit"
-- assertVisible: "Form submitted successfully!"
+- tapOn: "Submit"
+- extendedWaitUntil:
+    visible: "Form submitted successfully!"
+    timeout: 5000

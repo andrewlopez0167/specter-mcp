@@ -32,10 +32,7 @@ describe('Real Device E2E Tests', () => {
 
   describe('list_devices', () => {
     it('should list Android devices when available', async () => {
-      if (!deviceSetup.androidAvailable) {
-        console.log('Skipping: No Android device available');
-        return;
-      }
+      expect(deviceSetup.androidAvailable, 'Test requires Android device but none available').toBe(true);
 
       const registry = getToolRegistry();
       const tool = registry.getTool('list_devices');
@@ -52,10 +49,7 @@ describe('Real Device E2E Tests', () => {
     });
 
     it('should list iOS devices when available', async () => {
-      if (!deviceSetup.iosAvailable) {
-        console.log('Skipping: No iOS device available');
-        return;
-      }
+      expect(deviceSetup.iosAvailable, 'Test requires iOS device but none available').toBe(true);
 
       const registry = getToolRegistry();
       const tool = registry.getTool('list_devices');
@@ -87,10 +81,7 @@ describe('Real Device E2E Tests', () => {
 
   describe('manage_env', () => {
     it('should check Android emulator status', async () => {
-      if (!deviceSetup.androidAvailable) {
-        console.log('Skipping: No Android device available');
-        return;
-      }
+      expect(deviceSetup.androidAvailable, 'Test requires Android device but none available').toBe(true);
 
       const registry = getToolRegistry();
       const tool = registry.getTool('manage_env');
@@ -108,10 +99,7 @@ describe('Real Device E2E Tests', () => {
     });
 
     it('should check iOS simulator status', async () => {
-      if (!deviceSetup.iosAvailable) {
-        console.log('Skipping: No iOS device available');
-        return;
-      }
+      expect(deviceSetup.iosAvailable, 'Test requires iOS device but none available').toBe(true);
 
       const registry = getToolRegistry();
       const tool = registry.getTool('manage_env');
@@ -129,10 +117,7 @@ describe('Real Device E2E Tests', () => {
 
   describe('inspect_logs', () => {
     it('should stream Android logs', async () => {
-      if (!deviceSetup.androidAvailable) {
-        console.log('Skipping: No Android device available');
-        return;
-      }
+      expect(deviceSetup.androidAvailable, 'Test requires Android device but none available').toBe(true);
 
       const registry = getToolRegistry();
       const tool = registry.getTool('inspect_logs');
@@ -149,10 +134,7 @@ describe('Real Device E2E Tests', () => {
     });
 
     it('should stream iOS logs', async () => {
-      if (!deviceSetup.iosAvailable) {
-        console.log('Skipping: No iOS device available');
-        return;
-      }
+      expect(deviceSetup.iosAvailable, 'Test requires iOS device but none available').toBe(true);
 
       const registry = getToolRegistry();
       const tool = registry.getTool('inspect_logs');
@@ -170,10 +152,7 @@ describe('Real Device E2E Tests', () => {
 
   describe('get_ui_context (requires running app)', () => {
     it('should capture Android screenshot', async () => {
-      if (!deviceSetup.androidAvailable) {
-        console.log('Skipping: No Android device available');
-        return;
-      }
+      expect(deviceSetup.androidAvailable, 'Test requires Android device but none available').toBe(true);
 
       const registry = getToolRegistry();
       const tool = registry.getTool('get_ui_context');
@@ -196,10 +175,7 @@ describe('Real Device E2E Tests', () => {
     });
 
     it('should capture iOS screenshot', async () => {
-      if (!deviceSetup.iosAvailable) {
-        console.log('Skipping: No iOS device available');
-        return;
-      }
+      expect(deviceSetup.iosAvailable, 'Test requires iOS device but none available').toBe(true);
 
       const registry = getToolRegistry();
       const tool = registry.getTool('get_ui_context');
@@ -222,10 +198,7 @@ describe('Real Device E2E Tests', () => {
 
   describe('interact_with_ui', () => {
     it('should execute tap on Android', async () => {
-      if (!deviceSetup.androidAvailable) {
-        console.log('Skipping: No Android device available');
-        return;
-      }
+      expect(deviceSetup.androidAvailable, 'Test requires Android device but none available').toBe(true);
 
       const registry = getToolRegistry();
       const tool = registry.getTool('interact_with_ui');
@@ -244,10 +217,7 @@ describe('Real Device E2E Tests', () => {
     });
 
     it('should execute tap on iOS', async () => {
-      if (!deviceSetup.iosAvailable) {
-        console.log('Skipping: No iOS device available');
-        return;
-      }
+      expect(deviceSetup.iosAvailable, 'Test requires iOS device but none available').toBe(true);
 
       const registry = getToolRegistry();
       const tool = registry.getTool('interact_with_ui');
@@ -270,10 +240,7 @@ describe('Real Device E2E Tests', () => {
 
   describe('deep_link_navigate', () => {
     it('should open deep link on Android', async () => {
-      if (!deviceSetup.androidAvailable) {
-        console.log('Skipping: No Android device available');
-        return;
-      }
+      expect(deviceSetup.androidAvailable, 'Test requires Android device but none available').toBe(true);
 
       const registry = getToolRegistry();
       const tool = registry.getTool('deep_link_navigate');
@@ -290,10 +257,7 @@ describe('Real Device E2E Tests', () => {
     });
 
     it('should open deep link on iOS', async () => {
-      if (!deviceSetup.iosAvailable) {
-        console.log('Skipping: No iOS device available');
-        return;
-      }
+      expect(deviceSetup.iosAvailable, 'Test requires iOS device but none available').toBe(true);
 
       const registry = getToolRegistry();
       const tool = registry.getTool('deep_link_navigate');

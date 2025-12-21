@@ -1,10 +1,12 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
   executeShell,
   executeShellOrThrow,
   commandExists,
   parseLines,
 } from '../../../src/utils/shell.js';
+
+// Console output is silenced globally via tests/setup.ts
 
 describe('shell utilities', () => {
   describe('executeShell', () => {

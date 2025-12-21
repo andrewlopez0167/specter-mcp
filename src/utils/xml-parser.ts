@@ -62,6 +62,18 @@ export async function parseAndroidHierarchy(
 ): Promise<UIElement[]> {
   const { includeInvisible = false, flatten = true, maxDepth = 20 } = options;
 
+  // Validate input is XML-like before attempting to parse
+  if (!xml || typeof xml !== 'string') {
+    console.error('[xml-parser] Invalid input: expected XML string');
+    return [];
+  }
+
+  const trimmed = xml.trim();
+  if (!trimmed.startsWith('<') && !trimmed.startsWith('<?xml')) {
+    console.error('[xml-parser] Invalid input: does not appear to be XML (starts with:', trimmed.substring(0, 20) + '...)');
+    return [];
+  }
+
   try {
     const result = await parseStringPromise(xml, {
       explicitArray: true,
@@ -76,8 +88,8 @@ export async function parseAndroidHierarchy(
 
       const attrs = node.$ || {};
 
-      // Parse visibility
-      const visible = attrs['visible-to-user'] === 'true';
+      // Parse visibility (default to visible if attribute not present)
+      const visible = attrs['visible-to-user'] !== 'false';
       if (!visible && !includeInvisible) {
         return null;
       }

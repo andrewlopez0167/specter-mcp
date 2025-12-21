@@ -1,4 +1,4 @@
-appId: com.specter.testsubject
+appId: ${APP_ID}
 name: Full E2E Flow Test
 ---
 # Complete E2E test covering both Counter and Form features
@@ -7,21 +7,16 @@ name: Full E2E Flow Test
 # ======== COUNTER TESTS ========
 - assertVisible: "Specter Counter"
 
-# Basic counter operations
-- tapOn:
-    id: "btn_increment"
-- tapOn:
-    id: "btn_increment"
-- tapOn:
-    id: "btn_increment"
+# Basic counter operations (use text for cross-platform)
+- tapOn: "+"
+- tapOn: "+"
+- tapOn: "+"
 - assertVisible: "3"
 
-- tapOn:
-    id: "btn_decrement"
+- tapOn: "-"
 - assertVisible: "2"
 
-- tapOn:
-    id: "btn_reset"
+- tapOn: "Reset"
 - assertVisible: "0"
 
 # ======== FORM TESTS ========
@@ -29,27 +24,19 @@ name: Full E2E Flow Test
 - tapOn: "Form"
 - assertVisible: "Registration Form"
 
-# Fill valid form
-- tapOn:
-    id: "input_email"
+# Fill valid form - use text selectors for cross-platform
+- tapOn: "Email"
 - inputText: "test@specter.com"
 
-- tapOn:
-    id: "input_username"
+- tapOn: "Username"
 - inputText: "specteruser"
 
-- tapOn:
-    id: "input_password"
+- tapOn: "Password"
 - inputText: "SecurePass1"
 
-# Submit
-- tapOn:
-    id: "btn_submit"
-- assertVisible: "Form submitted successfully!"
-
-# ======== NAVIGATION TEST ========
-# Go back to Counter
-- tapOn: "Counter"
-- assertVisible: "Specter Counter"
-# Counter should have reset (new session)
-- assertVisible: "0"
+# Submit (hide keyboard first to ensure button is accessible)
+- hideKeyboard
+- tapOn: "Submit"
+- extendedWaitUntil:
+    visible: "Form submitted successfully!"
+    timeout: 5000

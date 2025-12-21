@@ -79,10 +79,9 @@ describe('iOS UserDefaults Reader Integration', () => {
 
   describe('getAppContainerPath', () => {
     it('should return container path for installed app', async () => {
-      if (!simulatorAvailable || !appInstalled || !deviceId) {
-        console.log('Skipping: No simulator or app');
-        return;
-      }
+      expect(simulatorAvailable, 'No iOS simulator available').toBe(true);
+      expect(appInstalled, `App ${BUNDLE_ID} not installed`).toBe(true);
+      expect(deviceId, 'No device ID available').toBeTruthy();
 
       const containerPath = await getAppContainerPath(BUNDLE_ID, deviceId);
 
@@ -92,44 +91,36 @@ describe('iOS UserDefaults Reader Integration', () => {
     });
 
     it('should return null for non-existent app', async () => {
-      if (!simulatorAvailable || !deviceId) {
-        console.log('Skipping: No simulator');
-        return;
-      }
+      expect(simulatorAvailable, 'No iOS simulator available').toBe(true);
+      expect(deviceId, 'No device ID available').toBeTruthy();
 
-      const containerPath = await getAppContainerPath('com.nonexistent.app', deviceId);
+      const containerPath = await getAppContainerPath('com.nonexistent.app', deviceId!);
       expect(containerPath).toBeNull();
     });
   });
 
   describe('isAppInstalled', () => {
     it('should detect installed app', async () => {
-      if (!simulatorAvailable || !deviceId) {
-        console.log('Skipping: No simulator');
-        return;
-      }
+      expect(simulatorAvailable, 'No iOS simulator available').toBe(true);
+      expect(deviceId, 'No device ID available').toBeTruthy();
 
       const installed = await isAppInstalled(BUNDLE_ID, deviceId);
       expect(installed).toBe(appInstalled);
     });
 
     it('should return false for non-existent app', async () => {
-      if (!simulatorAvailable || !deviceId) {
-        console.log('Skipping: No simulator');
-        return;
-      }
+      expect(simulatorAvailable, 'No iOS simulator available').toBe(true);
+      expect(deviceId, 'No device ID available').toBeTruthy();
 
-      const installed = await isAppInstalled('com.nonexistent.app', deviceId);
+      const installed = await isAppInstalled('com.nonexistent.app', deviceId!);
       expect(installed).toBe(false);
     });
   });
 
   describe('listInstalledApps', () => {
     it('should list apps on simulator', async () => {
-      if (!simulatorAvailable || !deviceId) {
-        console.log('Skipping: No simulator');
-        return;
-      }
+      expect(simulatorAvailable, 'No iOS simulator available').toBe(true);
+      expect(deviceId, 'No device ID available').toBeTruthy();
 
       const apps = await listInstalledApps(deviceId);
 
@@ -144,10 +135,9 @@ describe('iOS UserDefaults Reader Integration', () => {
 
   describe('readUserDefaults', () => {
     it('should read UserDefaults from SpecterCounter', async () => {
-      if (!simulatorAvailable || !appInstalled || !deviceId) {
-        console.log('Skipping: No simulator or app');
-        return;
-      }
+      expect(simulatorAvailable, 'No iOS simulator available').toBe(true);
+      expect(appInstalled, `App ${BUNDLE_ID} not installed`).toBe(true);
+      expect(deviceId, 'No device ID available').toBeTruthy();
 
       const prefs = await readUserDefaults(BUNDLE_ID, { deviceId });
 
@@ -162,10 +152,8 @@ describe('iOS UserDefaults Reader Integration', () => {
     });
 
     it('should return empty array for non-existent app', async () => {
-      if (!simulatorAvailable || !deviceId) {
-        console.log('Skipping: No simulator');
-        return;
-      }
+      expect(simulatorAvailable, 'No iOS simulator available').toBe(true);
+      expect(deviceId, 'No device ID available').toBeTruthy();
 
       const prefs = await readUserDefaults('com.nonexistent.app', { deviceId });
       expect(prefs).toEqual([]);
@@ -174,10 +162,9 @@ describe('iOS UserDefaults Reader Integration', () => {
 
   describe('readDefaultsDomain', () => {
     it('should read defaults domain for app', async () => {
-      if (!simulatorAvailable || !appInstalled || !deviceId) {
-        console.log('Skipping: No simulator or app');
-        return;
-      }
+      expect(simulatorAvailable, 'No iOS simulator available').toBe(true);
+      expect(appInstalled, `App ${BUNDLE_ID} not installed`).toBe(true);
+      expect(deviceId, 'No device ID available').toBeTruthy();
 
       const domain = await readDefaultsDomain(BUNDLE_ID, deviceId);
 
@@ -190,12 +177,10 @@ describe('iOS UserDefaults Reader Integration', () => {
     });
 
     it('should return null for non-existent app', async () => {
-      if (!simulatorAvailable || !deviceId) {
-        console.log('Skipping: No simulator');
-        return;
-      }
+      expect(simulatorAvailable, 'No iOS simulator available').toBe(true);
+      expect(deviceId, 'No device ID available').toBeTruthy();
 
-      const domain = await readDefaultsDomain('com.nonexistent.app', deviceId);
+      const domain = await readDefaultsDomain('com.nonexistent.app', deviceId!);
       expect(domain).toBeNull();
     });
   });

@@ -33,7 +33,7 @@ const TEST_APP = {
   ios: {
     bundleId: 'com.specter.counter',
     scheme: 'SpecterCounter',
-    appPath: 'iosApp/build/Build/Products/Debug-iphonesimulator/SpecterCounter.app',
+    appPath: 'build/DerivedData/Build/Products/Debug-iphonesimulator/SpecterCounter.app',
   },
   deepLinks: {
     home: 'specter://app',
@@ -69,10 +69,7 @@ describe('Test App E2E Suite', () => {
 
   describe('Build Phase', () => {
     it('should build Android app successfully', async () => {
-      if (!deviceSetup.androidAvailable) {
-        console.log('Skipping: No Android device available');
-        return;
-      }
+      expect(deviceSetup.androidAvailable, 'Test requires Android device but none available').toBe(true);
 
       const registry = getToolRegistry();
       const buildTool = registry.getTool('build_app');
@@ -100,10 +97,7 @@ describe('Test App E2E Suite', () => {
     }, 600000); // 10 minute timeout for build
 
     it('should build iOS app successfully', async () => {
-      if (!deviceSetup.iosAvailable) {
-        console.log('Skipping: No iOS device available');
-        return;
-      }
+      expect(deviceSetup.iosAvailable, 'Test requires iOS device but none available').toBe(true);
 
       const registry = getToolRegistry();
       const buildTool = registry.getTool('build_app');
@@ -132,17 +126,11 @@ describe('Test App E2E Suite', () => {
 
   describe('Install Phase', () => {
     it('should install Android APK on device', async () => {
-      if (!deviceSetup.androidAvailable) {
-        console.log('Skipping: No Android device available');
-        return;
-      }
+      expect(deviceSetup.androidAvailable, 'Test requires Android device but none available').toBe(true);
 
       // Check if APK exists (either from build or pre-built)
       const apkPath = androidBuildArtifact || resolve(TEST_APP.projectPath, TEST_APP.android.apkPath);
-      if (!existsSync(apkPath)) {
-        console.log('Skipping: No APK available to install');
-        return;
-      }
+      expect(existsSync(apkPath), `APK not found at ${apkPath} - run build phase first`).toBe(true);
 
       const registry = getToolRegistry();
       const installTool = registry.getTool('install_app');
@@ -159,17 +147,11 @@ describe('Test App E2E Suite', () => {
     }, 120000); // 2 minute timeout for install
 
     it('should install iOS app on simulator', async () => {
-      if (!deviceSetup.iosAvailable) {
-        console.log('Skipping: No iOS device available');
-        return;
-      }
+      expect(deviceSetup.iosAvailable, 'Test requires iOS device but none available').toBe(true);
 
       // Check if .app exists
       const appPath = iosBuildArtifact || resolve(TEST_APP.projectPath, TEST_APP.ios.appPath);
-      if (!existsSync(appPath)) {
-        console.log('Skipping: No iOS app available to install');
-        return;
-      }
+      expect(existsSync(appPath), `iOS app not found at ${appPath} - run build phase first`).toBe(true);
 
       const registry = getToolRegistry();
       const installTool = registry.getTool('install_app');
@@ -188,10 +170,7 @@ describe('Test App E2E Suite', () => {
 
   describe('Launch Phase', () => {
     it('should launch Android app', async () => {
-      if (!deviceSetup.androidAvailable) {
-        console.log('Skipping: No Android device available');
-        return;
-      }
+      expect(deviceSetup.androidAvailable, 'Test requires Android device but none available').toBe(true);
 
       const registry = getToolRegistry();
       const launchTool = registry.getTool('launch_app');
@@ -212,17 +191,11 @@ describe('Test App E2E Suite', () => {
     }, 30000);
 
     it('should launch iOS app', async () => {
-      if (!deviceSetup.iosAvailable) {
-        console.log('Skipping: No iOS device available');
-        return;
-      }
+      expect(deviceSetup.iosAvailable, 'Test requires iOS device but none available').toBe(true);
 
       // Check if app is installed
       const appPath = iosBuildArtifact || resolve(TEST_APP.projectPath, TEST_APP.ios.appPath);
-      if (!existsSync(appPath)) {
-        console.log('Skipping: iOS app not built/installed');
-        return;
-      }
+      expect(existsSync(appPath), `iOS app not found at ${appPath} - run build phase first`).toBe(true);
 
       const registry = getToolRegistry();
       const launchTool = registry.getTool('launch_app');
@@ -242,10 +215,7 @@ describe('Test App E2E Suite', () => {
 
   describe('UI Context Phase (requires app running)', () => {
     it('should capture Android screenshot with app visible', async () => {
-      if (!deviceSetup.androidAvailable) {
-        console.log('Skipping: No Android device available');
-        return;
-      }
+      expect(deviceSetup.androidAvailable, 'Test requires Android device but none available').toBe(true);
 
       const registry = getToolRegistry();
       const uiTool = registry.getTool('get_ui_context');
@@ -272,10 +242,7 @@ describe('Test App E2E Suite', () => {
     }, 30000);
 
     it('should capture iOS screenshot with app visible', async () => {
-      if (!deviceSetup.iosAvailable) {
-        console.log('Skipping: No iOS device available');
-        return;
-      }
+      expect(deviceSetup.iosAvailable, 'Test requires iOS device but none available').toBe(true);
 
       const registry = getToolRegistry();
       const uiTool = registry.getTool('get_ui_context');
@@ -299,10 +266,7 @@ describe('Test App E2E Suite', () => {
 
   describe('Deep Link Navigation (requires app installed)', () => {
     it('should navigate to Counter screen via deep link on Android', async () => {
-      if (!deviceSetup.androidAvailable) {
-        console.log('Skipping: No Android device available');
-        return;
-      }
+      expect(deviceSetup.androidAvailable, 'Test requires Android device but none available').toBe(true);
 
       const registry = getToolRegistry();
       const deepLinkTool = registry.getTool('deep_link_navigate');
@@ -323,10 +287,7 @@ describe('Test App E2E Suite', () => {
     }, 15000);
 
     it('should navigate to Form screen via deep link on Android', async () => {
-      if (!deviceSetup.androidAvailable) {
-        console.log('Skipping: No Android device available');
-        return;
-      }
+      expect(deviceSetup.androidAvailable, 'Test requires Android device but none available').toBe(true);
 
       const registry = getToolRegistry();
       const deepLinkTool = registry.getTool('deep_link_navigate');
@@ -346,10 +307,7 @@ describe('Test App E2E Suite', () => {
     }, 15000);
 
     it('should navigate via deep link on iOS', async () => {
-      if (!deviceSetup.iosAvailable) {
-        console.log('Skipping: No iOS device available');
-        return;
-      }
+      expect(deviceSetup.iosAvailable, 'Test requires iOS device but none available').toBe(true);
 
       const registry = getToolRegistry();
       const deepLinkTool = registry.getTool('deep_link_navigate');
@@ -371,10 +329,7 @@ describe('Test App E2E Suite', () => {
 
   describe('UI Interaction (requires app running)', () => {
     it('should tap increment button on Android', async () => {
-      if (!deviceSetup.androidAvailable) {
-        console.log('Skipping: No Android device available');
-        return;
-      }
+      expect(deviceSetup.androidAvailable, 'Test requires Android device but none available').toBe(true);
 
       // First, launch the app to Counter screen
       const registry = getToolRegistry();
@@ -390,15 +345,11 @@ describe('Test App E2E Suite', () => {
       const uiTool = registry.getTool('get_ui_context');
       const uiResult = await uiTool!.handler({
         platform: 'android',
-        deviceId: deviceSetup.androidDeviceId,
-        captureHierarchy: true,
-        captureScreenshot: false,
-      }) as { success: boolean; hierarchy?: unknown };
+        device: deviceSetup.androidDeviceId,
+        skipScreenshot: true,
+      }) as { platform: string; elements?: unknown[] };
 
-      if (!uiResult.success) {
-        console.log('Could not get UI hierarchy, skipping tap test');
-        return;
-      }
+      expect(uiResult.platform, 'Could not get UI hierarchy').toBe('android');
 
       // Tap in center of screen (where increment button typically is)
       const interactTool = registry.getTool('interact_with_ui');
@@ -415,10 +366,7 @@ describe('Test App E2E Suite', () => {
     }, 30000);
 
     it('should input text on Android', async () => {
-      if (!deviceSetup.androidAvailable) {
-        console.log('Skipping: No Android device available');
-        return;
-      }
+      expect(deviceSetup.androidAvailable, 'Test requires Android device but none available').toBe(true);
 
       const registry = getToolRegistry();
       const interactTool = registry.getTool('interact_with_ui');
@@ -436,10 +384,7 @@ describe('Test App E2E Suite', () => {
     }, 15000);
 
     it('should swipe on Android', async () => {
-      if (!deviceSetup.androidAvailable) {
-        console.log('Skipping: No Android device available');
-        return;
-      }
+      expect(deviceSetup.androidAvailable, 'Test requires Android device but none available').toBe(true);
 
       const registry = getToolRegistry();
       const interactTool = registry.getTool('interact_with_ui');
@@ -462,10 +407,7 @@ describe('Test App E2E Suite', () => {
 
   describe('Log Inspection (requires app running)', () => {
     it('should capture logs from running Android app', async () => {
-      if (!deviceSetup.androidAvailable) {
-        console.log('Skipping: No Android device available');
-        return;
-      }
+      expect(deviceSetup.androidAvailable, 'Test requires Android device but none available').toBe(true);
 
       const registry = getToolRegistry();
       const logTool = registry.getTool('inspect_logs');
@@ -486,10 +428,7 @@ describe('Test App E2E Suite', () => {
     }, 15000);
 
     it('should capture logs from running iOS app', async () => {
-      if (!deviceSetup.iosAvailable) {
-        console.log('Skipping: No iOS device available');
-        return;
-      }
+      expect(deviceSetup.iosAvailable, 'Test requires iOS device but none available').toBe(true);
 
       const registry = getToolRegistry();
       const logTool = registry.getTool('inspect_logs');
@@ -525,16 +464,10 @@ describe('Maestro E2E Flows', () => {
   });
 
   it('should run counter flow on Android', async () => {
-    if (!deviceSetup.androidAvailable) {
-      console.log('Skipping: No Android device available');
-      return;
-    }
+    expect(deviceSetup.androidAvailable, 'Test requires Android device but none available').toBe(true);
 
     const flowPath = resolve(TEST_APP.projectPath, TEST_APP.maestro.counterFlow);
-    if (!existsSync(flowPath)) {
-      console.log('Skipping: Maestro flow file not found');
-      return;
-    }
+    expect(existsSync(flowPath), `Maestro flow file not found at ${flowPath}`).toBe(true);
 
     const registry = getToolRegistry();
     const maestroTool = registry.getTool('run_maestro_flow');
@@ -548,32 +481,21 @@ describe('Maestro E2E Flows', () => {
       timeoutMs: 120000,
       generateFailureBundle: true,
     }) as {
-      flowResult: { success: boolean; passedSteps: number; totalSteps: number };
+      flowResult: { success: boolean; passedSteps: number; totalSteps: number; error?: string };
       summary: string;
       failureBundle?: unknown;
     };
 
     console.log('Maestro counter flow result:', result.summary);
-
-    if (result.flowResult.success) {
-      expect(result.flowResult.passedSteps).toBe(result.flowResult.totalSteps);
-    } else {
-      console.log('Flow failed - failure bundle generated');
-      expect(result.failureBundle).toBeDefined();
-    }
+    expect(result.flowResult.success, `Counter flow failed: ${result.flowResult.error || result.summary}`).toBe(true);
+    expect(result.flowResult.passedSteps).toBe(result.flowResult.totalSteps);
   }, 180000); // 3 minute timeout for Maestro flow
 
   it('should run form flow on Android', async () => {
-    if (!deviceSetup.androidAvailable) {
-      console.log('Skipping: No Android device available');
-      return;
-    }
+    expect(deviceSetup.androidAvailable, 'Test requires Android device but none available').toBe(true);
 
     const flowPath = resolve(TEST_APP.projectPath, TEST_APP.maestro.formFlow);
-    if (!existsSync(flowPath)) {
-      console.log('Skipping: Maestro flow file not found');
-      return;
-    }
+    expect(existsSync(flowPath), `Maestro flow file not found at ${flowPath}`).toBe(true);
 
     const registry = getToolRegistry();
     const maestroTool = registry.getTool('run_maestro_flow');
@@ -584,22 +506,18 @@ describe('Maestro E2E Flows', () => {
       device: deviceSetup.androidDeviceId,
       appId: TEST_APP.android.appId,
       timeoutMs: 120000,
-    }) as { flowResult: { success: boolean }; summary: string };
+      generateFailureBundle: true,
+    }) as { flowResult: { success: boolean; error?: string }; summary: string };
 
     console.log('Maestro form flow result:', result.summary);
+    expect(result.flowResult.success, `Form flow failed: ${result.flowResult.error || result.summary}`).toBe(true);
   }, 180000);
 
   it('should run full E2E flow on Android', async () => {
-    if (!deviceSetup.androidAvailable) {
-      console.log('Skipping: No Android device available');
-      return;
-    }
+    expect(deviceSetup.androidAvailable, 'Test requires Android device but none available').toBe(true);
 
     const flowPath = resolve(TEST_APP.projectPath, TEST_APP.maestro.fullFlow);
-    if (!existsSync(flowPath)) {
-      console.log('Skipping: Maestro flow file not found');
-      return;
-    }
+    expect(existsSync(flowPath), `Maestro flow file not found at ${flowPath}`).toBe(true);
 
     const registry = getToolRegistry();
     const maestroTool = registry.getTool('run_maestro_flow');
@@ -612,40 +530,81 @@ describe('Maestro E2E Flows', () => {
       timeoutMs: 180000,
       generateFailureBundle: true,
     }) as {
-      flowResult: { success: boolean; passedSteps: number; totalSteps: number; durationMs: number };
+      flowResult: { success: boolean; passedSteps: number; totalSteps: number; durationMs: number; error?: string };
       summary: string;
     };
 
     console.log('Maestro full flow result:', result.summary);
     console.log(`Duration: ${(result.flowResult.durationMs / 1000).toFixed(2)}s`);
+    expect(result.flowResult.success, `Full flow failed: ${result.flowResult.error || result.summary}`).toBe(true);
   }, 240000); // 4 minute timeout
 
   it('should run counter flow on iOS', async () => {
-    if (!deviceSetup.iosAvailable) {
-      console.log('Skipping: No iOS device available');
-      return;
-    }
+    expect(deviceSetup.iosAvailable, 'Test requires iOS device but none available').toBe(true);
 
     const flowPath = resolve(TEST_APP.projectPath, TEST_APP.maestro.counterFlow);
-    if (!existsSync(flowPath)) {
-      console.log('Skipping: Maestro flow file not found');
-      return;
-    }
+    expect(existsSync(flowPath), `Maestro flow file not found at ${flowPath}`).toBe(true);
 
     const registry = getToolRegistry();
     const maestroTool = registry.getTool('run_maestro_flow');
 
-    // Note: iOS Maestro flows may need different app ID
     const result = await maestroTool!.handler({
       flowPath,
       platform: 'ios',
       device: deviceSetup.iosDeviceId,
       appId: TEST_APP.ios.bundleId,
       timeoutMs: 120000,
-    }) as { flowResult: { success: boolean }; summary: string };
+      generateFailureBundle: true,
+    }) as { flowResult: { success: boolean; error?: string }; summary: string };
 
     console.log('iOS Maestro counter flow result:', result.summary);
+    expect(result.flowResult.success, `iOS counter flow failed: ${result.flowResult.error || result.summary}`).toBe(true);
   }, 180000);
+
+  it('should run form flow on iOS', async () => {
+    expect(deviceSetup.iosAvailable, 'Test requires iOS device but none available').toBe(true);
+
+    const flowPath = resolve(TEST_APP.projectPath, TEST_APP.maestro.formFlow);
+    expect(existsSync(flowPath), `Maestro flow file not found at ${flowPath}`).toBe(true);
+
+    const registry = getToolRegistry();
+    const maestroTool = registry.getTool('run_maestro_flow');
+
+    const result = await maestroTool!.handler({
+      flowPath,
+      platform: 'ios',
+      device: deviceSetup.iosDeviceId,
+      appId: TEST_APP.ios.bundleId,
+      timeoutMs: 120000,
+      generateFailureBundle: true,
+    }) as { flowResult: { success: boolean; error?: string }; summary: string };
+
+    console.log('iOS Maestro form flow result:', result.summary);
+    expect(result.flowResult.success, `iOS form flow failed: ${result.flowResult.error || result.summary}`).toBe(true);
+  }, 180000);
+
+  it('should run full E2E flow on iOS', async () => {
+    expect(deviceSetup.iosAvailable, 'Test requires iOS device but none available').toBe(true);
+
+    const flowPath = resolve(TEST_APP.projectPath, TEST_APP.maestro.fullFlow);
+    expect(existsSync(flowPath), `Maestro flow file not found at ${flowPath}`).toBe(true);
+
+    const registry = getToolRegistry();
+    const maestroTool = registry.getTool('run_maestro_flow');
+
+    const result = await maestroTool!.handler({
+      flowPath,
+      platform: 'ios',
+      device: deviceSetup.iosDeviceId,
+      appId: TEST_APP.ios.bundleId,
+      timeoutMs: 180000,
+      generateFailureBundle: true,
+    }) as { flowResult: { success: boolean; durationMs: number; error?: string }; summary: string };
+
+    console.log('iOS Maestro full flow result:', result.summary);
+    console.log(`Duration: ${(result.flowResult.durationMs / 1000).toFixed(2)}s`);
+    expect(result.flowResult.success, `iOS full flow failed: ${result.flowResult.error || result.summary}`).toBe(true);
+  }, 240000);
 });
 
 describe('Integration Tests - MCP Tools with Test App', () => {
@@ -666,19 +625,12 @@ describe('Integration Tests - MCP Tools with Test App', () => {
 
   describe('Full Workflow: Build -> Install -> Launch -> Interact', () => {
     it('should complete full Android workflow', async () => {
-      if (!deviceSetup.androidAvailable) {
-        console.log('Skipping: No Android device available');
-        return;
-      }
+      expect(deviceSetup.androidAvailable, 'Test requires Android device but none available').toBe(true);
 
       const registry = getToolRegistry();
       const apkPath = resolve(TEST_APP.projectPath, TEST_APP.android.apkPath);
 
-      // Skip if no pre-built APK (build test should run first)
-      if (!existsSync(apkPath)) {
-        console.log('Skipping: APK not found. Run build test first.');
-        return;
-      }
+      expect(existsSync(apkPath), `APK not found at ${apkPath} - run build test first`).toBe(true);
 
       // 1. Install
       const installTool = registry.getTool('install_app');
@@ -688,10 +640,7 @@ describe('Integration Tests - MCP Tools with Test App', () => {
         device: deviceSetup.androidDeviceId,
       }) as { success: boolean };
 
-      if (!installResult.success) {
-        console.log('Install failed, skipping rest of workflow');
-        return;
-      }
+      expect(installResult.success, 'Install failed').toBe(true);
 
       // 2. Launch
       const launchTool = registry.getTool('launch_app');
@@ -749,18 +698,12 @@ describe('Integration Tests - MCP Tools with Test App', () => {
 
   describe('App State Inspection', () => {
     it('should inspect Android app state', async () => {
-      if (!deviceSetup.androidAvailable) {
-        console.log('Skipping: No Android device available');
-        return;
-      }
+      expect(deviceSetup.androidAvailable, 'Test requires Android device but none available').toBe(true);
 
       const registry = getToolRegistry();
       const stateTool = registry.getTool('inspect_app_state');
 
-      if (!stateTool) {
-        console.log('Skipping: inspect_app_state tool not available');
-        return;
-      }
+      expect(stateTool, 'inspect_app_state tool not available').toBeDefined();
 
       const result = await stateTool.handler({
         platform: 'android',
@@ -778,10 +721,7 @@ describe('Integration Tests - MCP Tools with Test App', () => {
 
   describe('Debug Screen - Crash Analysis Testing', () => {
     it('should navigate to Debug screen via deep link on Android', async () => {
-      if (!deviceSetup.androidAvailable) {
-        console.log('Skipping: No Android device available');
-        return;
-      }
+      expect(deviceSetup.androidAvailable, 'Test requires Android device but none available').toBe(true);
 
       const registry = getToolRegistry();
 
@@ -799,17 +739,11 @@ describe('Integration Tests - MCP Tools with Test App', () => {
     }, 30000);
 
     it('should trigger caught exception and detect it in logs on Android', async () => {
-      if (!deviceSetup.androidAvailable) {
-        console.log('Skipping: No Android device available');
-        return;
-      }
+      expect(deviceSetup.androidAvailable, 'Test requires Android device but none available').toBe(true);
 
       // Check if APK exists (app must be built)
       const apkPath = resolve(TEST_APP.projectPath, TEST_APP.android.apkPath);
-      if (!existsSync(apkPath)) {
-        console.log('Skipping: Android app not built - run build phase first');
-        return;
-      }
+      expect(existsSync(apkPath), `APK not found at ${apkPath} - run build phase first`).toBe(true);
 
       const registry = getToolRegistry();
 
@@ -826,22 +760,19 @@ describe('Integration Tests - MCP Tools with Test App', () => {
 
       // 2. Tap the caught exception button
       const interactTool = registry.getTool('interact_with_ui');
-      try {
-        const tapResult = await interactTool!.handler({
-          platform: 'android',
-          device: deviceSetup.androidDeviceId,
-          action: 'tap',
-          element: 'btn_caught_exception',
-        }) as { success: boolean };
+      const tapResult = await interactTool!.handler({
+        platform: 'android',
+        device: deviceSetup.androidDeviceId,
+        action: 'tap',
+        element: 'btn_caught_exception',
+      }) as { success: boolean; error?: string };
 
-        expect(tapResult.success).toBe(true);
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        console.log('Triggered caught exception via Debug screen');
-      } catch (error) {
-        // Element not found - app needs to be rebuilt with semantics
-        console.log('Skipping: btn_caught_exception not found. Rebuild app with: cd test-apps/specter-test-subject && ./gradlew :androidApp:assembleDebug');
-        return;
+      if (!tapResult.success) {
+        console.log('Tap failed:', tapResult.error);
       }
+      expect(tapResult.success, `Failed to tap btn_caught_exception: ${tapResult.error}`).toBe(true);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      console.log('Triggered caught exception via Debug screen');
 
       // 3. Analyze crash logs to detect the exception
       const crashTool = registry.getTool('analyze_crash');
@@ -878,17 +809,11 @@ describe('Integration Tests - MCP Tools with Test App', () => {
     }, 60000);
 
     it('should trigger error log and detect it via inspect_logs on Android', async () => {
-      if (!deviceSetup.androidAvailable) {
-        console.log('Skipping: No Android device available');
-        return;
-      }
+      expect(deviceSetup.androidAvailable, 'Test requires Android device but none available').toBe(true);
 
       // Check if APK exists (app must be built)
       const apkPath = resolve(TEST_APP.projectPath, TEST_APP.android.apkPath);
-      if (!existsSync(apkPath)) {
-        console.log('Skipping: Android app not built - run build phase first');
-        return;
-      }
+      expect(existsSync(apkPath), `APK not found at ${apkPath} - run build phase first`).toBe(true);
 
       const registry = getToolRegistry();
 
@@ -905,22 +830,19 @@ describe('Integration Tests - MCP Tools with Test App', () => {
 
       // 2. Tap the error log button
       const interactTool = registry.getTool('interact_with_ui');
-      try {
-        const tapResult = await interactTool!.handler({
-          platform: 'android',
-          device: deviceSetup.androidDeviceId,
-          action: 'tap',
-          element: 'btn_log_error',
-        }) as { success: boolean };
+      const tapResult = await interactTool!.handler({
+        platform: 'android',
+        device: deviceSetup.androidDeviceId,
+        action: 'tap',
+        element: 'btn_log_error',
+      }) as { success: boolean; error?: string };
 
-        expect(tapResult.success).toBe(true);
-        await new Promise(resolve => setTimeout(resolve, 500));
-        console.log('Triggered error log via Debug screen');
-      } catch (error) {
-        // Element not found - app needs to be rebuilt with semantics
-        console.log('Skipping: btn_log_error not found. Rebuild app with: cd test-apps/specter-test-subject && ./gradlew :androidApp:assembleDebug');
-        return;
+      if (!tapResult.success) {
+        console.log('Tap failed:', tapResult.error);
       }
+      expect(tapResult.success, `Failed to tap btn_log_error: ${tapResult.error}`).toBe(true);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      console.log('Triggered error log via Debug screen');
 
       // 3. Inspect logs to verify
       const logTool = registry.getTool('inspect_logs');
@@ -937,10 +859,7 @@ describe('Integration Tests - MCP Tools with Test App', () => {
     }, 60000);
 
     it('should analyze iOS device logs for crash indicators', async () => {
-      if (!deviceSetup.iosAvailable) {
-        console.log('Skipping: No iOS simulator available');
-        return;
-      }
+      expect(deviceSetup.iosAvailable, 'Test requires iOS simulator but none available').toBe(true);
 
       const registry = getToolRegistry();
 
@@ -971,10 +890,7 @@ describe('Integration Tests - MCP Tools with Test App', () => {
     }, 30000);
 
     it('should return structured crash analysis result with all expected fields', async () => {
-      if (!deviceSetup.androidAvailable) {
-        console.log('Skipping: No Android device available');
-        return;
-      }
+      expect(deviceSetup.androidAvailable, 'Test requires Android device but none available').toBe(true);
 
       const registry = getToolRegistry();
       const crashTool = registry.getTool('analyze_crash');
@@ -1007,10 +923,7 @@ describe('Integration Tests - MCP Tools with Test App', () => {
 
   describe('Error Handling', () => {
     it('should handle non-existent app gracefully', async () => {
-      if (!deviceSetup.androidAvailable) {
-        console.log('Skipping: No Android device available');
-        return;
-      }
+      expect(deviceSetup.androidAvailable, 'Test requires Android device but none available').toBe(true);
 
       const registry = getToolRegistry();
       const launchTool = registry.getTool('launch_app');
@@ -1031,10 +944,7 @@ describe('Integration Tests - MCP Tools with Test App', () => {
     }, 15000);
 
     it('should handle invalid deep link gracefully', async () => {
-      if (!deviceSetup.androidAvailable) {
-        console.log('Skipping: No Android device available');
-        return;
-      }
+      expect(deviceSetup.androidAvailable, 'Test requires Android device but none available').toBe(true);
 
       const registry = getToolRegistry();
       const deepLinkTool = registry.getTool('deep_link_navigate');

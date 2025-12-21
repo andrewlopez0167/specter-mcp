@@ -23,27 +23,12 @@ export interface MaestroRunOptions {
   appId?: string;
   /** Timeout for the entire flow in milliseconds */
   timeoutMs?: number;
-  /** Output format */
-  format?: 'json' | 'junit';
+  /** Output format (Maestro supports: JUNIT, HTML, NOOP) */
+  format?: 'junit' | 'html' | 'noop';
   /** Output path for reports */
   outputPath?: string;
   /** Environment variables for the flow */
   env?: Record<string, string>;
-}
-
-/**
- * Maestro CLI output structure
- */
-interface MaestroOutput {
-  status: 'SUCCESS' | 'ERROR' | 'CANCELED';
-  errorMessage?: string;
-  steps?: Array<{
-    command: string;
-    status: 'COMPLETED' | 'FAILED' | 'SKIPPED';
-    duration: number;
-    error?: string;
-  }>;
-  duration?: number;
 }
 
 /**
@@ -56,7 +41,7 @@ export async function runMaestroFlow(options: MaestroRunOptions): Promise<FlowRe
     deviceId,
     appId,
     timeoutMs = 300000, // 5 minutes
-    format = 'json',
+    format,
     outputPath,
     env = {},
   } = options;
@@ -79,39 +64,46 @@ export async function runMaestroFlow(options: MaestroRunOptions): Promise<FlowRe
   const startTime = Date.now();
   const flowName = basename(flowPath);
 
-  // Build Maestro command
-  const args: string[] = ['test', flowPath];
+  // Build Maestro command - global options must come BEFORE 'test' subcommand
+  const args: string[] = [];
 
-  // Add device selection
+  // Add global device selection (must come before 'test')
   if (deviceId) {
     args.push('--device', deviceId);
   }
 
-  // Add platform-specific options
-  if (platform === 'android') {
-    args.push('--platform', 'android');
-  } else {
-    args.push('--platform', 'ios');
+  // Add global platform option (must come before 'test')
+  args.push('--platform', platform);
+
+  // Now add the test subcommand and flow path
+  args.push('test');
+
+  // Add app ID as environment variable via -e flag (required for Maestro)
+  if (appId) {
+    args.push('-e', `APP_ID=${appId}`);
   }
 
-  // Add format and output
-  if (format === 'json') {
-    args.push('--format', 'json');
+  // Add custom env vars
+  for (const [key, value] of Object.entries(env)) {
+    args.push('-e', `${key}=${value}`);
+  }
+
+  // Add format and output (Maestro supports: JUNIT, HTML, NOOP)
+  if (format) {
+    args.push('--format', format.toUpperCase());
   }
 
   if (outputPath) {
     args.push('--output', outputPath);
   }
 
+  // Add flow path last
+  args.push(flowPath);
+
   // Build environment
   const envVars: Record<string, string> = {
     ...process.env as Record<string, string>,
-    ...env,
   };
-
-  if (appId) {
-    envVars['APP_ID'] = appId;
-  }
 
   // Run Maestro
   const result = await executeShell('maestro', args, {
@@ -122,54 +114,21 @@ export async function runMaestroFlow(options: MaestroRunOptions): Promise<FlowRe
 
   const durationMs = Date.now() - startTime;
 
-  // Parse output
-  let maestroOutput: MaestroOutput | null = null;
-  try {
-    // Try to parse JSON output from stdout
-    const jsonMatch = result.stdout.match(/\{[\s\S]*"status"[\s\S]*\}/);
-    if (jsonMatch) {
-      maestroOutput = JSON.parse(jsonMatch[0]);
-    }
-  } catch {
-    // Output parsing failed, use raw output
-  }
-
-  // Build FlowResult
+  // Build FlowResult by parsing steps from raw output
   const steps: FlowStep[] = [];
   let failedAtStep = -1;
   let passedSteps = 0;
 
-  if (maestroOutput?.steps) {
-    for (let i = 0; i < maestroOutput.steps.length; i++) {
-      const step = maestroOutput.steps[i];
-      const status = step.status === 'COMPLETED' ? 'passed' :
-                     step.status === 'FAILED' ? 'failed' : 'skipped';
-
-      if (status === 'passed') passedSteps++;
-      if (status === 'failed' && failedAtStep === -1) failedAtStep = i;
-
-      steps.push({
-        index: i,
-        command: step.command,
-        args: {},
-        status,
-        durationMs: step.duration || 0,
-        error: step.error,
-      });
-    }
-  } else {
-    // Parse steps from raw output if JSON not available
-    const parsedSteps = parseStepsFromOutput(result.stdout);
-    for (let i = 0; i < parsedSteps.length; i++) {
-      const step = parsedSteps[i];
-      if (step.status === 'passed') passedSteps++;
-      if (step.status === 'failed' && failedAtStep === -1) failedAtStep = i;
-      steps.push(step);
-    }
+  // Parse steps from stdout
+  const parsedSteps = parseStepsFromOutput(result.stdout);
+  for (let i = 0; i < parsedSteps.length; i++) {
+    const step = parsedSteps[i];
+    if (step.status === 'passed') passedSteps++;
+    if (step.status === 'failed' && failedAtStep === -1) failedAtStep = i;
+    steps.push(step);
   }
 
-  const success = result.exitCode === 0 &&
-                  (maestroOutput?.status === 'SUCCESS' || failedAtStep === -1);
+  const success = result.exitCode === 0 && failedAtStep === -1;
 
   return {
     flowName,
@@ -180,7 +139,7 @@ export async function runMaestroFlow(options: MaestroRunOptions): Promise<FlowRe
     failedAtStep,
     durationMs,
     steps,
-    error: !success ? (maestroOutput?.errorMessage || result.stderr || 'Flow execution failed') : undefined,
+    error: !success ? (result.stderr || 'Flow execution failed') : undefined,
   };
 }
 
