@@ -216,25 +216,25 @@ describe('Real Device E2E Tests', () => {
       expect(result.success).toBe(true);
     });
 
-    it('should execute tap on iOS', async () => {
+    it('should reject tap on iOS with helpful message', async () => {
       expect(deviceSetup.iosAvailable, 'Test requires iOS device but none available').toBe(true);
 
       const registry = getToolRegistry();
       const tool = registry.getTool('interact_with_ui');
       expect(tool).toBeDefined();
 
-      // Note: iOS tap requires different approach (simctl doesn't have direct tap)
-      // This test validates the tool handles the platform correctly
+      // iOS tap is not supported via simctl - should return error with helpful message
       const result = await tool!.handler({
         platform: 'ios',
-        deviceId: deviceSetup.iosDeviceId,
+        device: deviceSetup.iosDeviceId,
         action: 'tap',
         x: 200,
         y: 400,
       }) as { success: boolean; error?: string };
 
-      // iOS tap may require additional setup (appium, etc)
-      expect(result).toHaveProperty('success');
+      // Should fail with helpful message pointing to Maestro
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('run_maestro_flow');
     });
   });
 

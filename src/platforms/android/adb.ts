@@ -2,7 +2,7 @@
  * ADB (Android Debug Bridge) wrapper
  * Provides type-safe interface to common ADB commands
  */
-import { executeShell, executeShellOrThrow, commandExists, parseLines } from '../../utils/shell.js';
+import { executeShell, executeShellOrThrow, executeShellBinary, commandExists, parseLines } from '../../utils/shell.js';
 import { Errors } from '../../models/errors.js';
 import { DeviceStatus, DEFAULTS } from '../../models/constants.js';
 
@@ -147,13 +147,13 @@ export async function takeScreenshot(deviceId?: string): Promise<Buffer> {
     ? ['-s', deviceId, 'exec-out', 'screencap', '-p']
     : ['exec-out', 'screencap', '-p'];
 
-  const result = await executeShell('adb', args);
+  const result = await executeShellBinary('adb', args);
 
   if (result.exitCode !== 0) {
     throw Errors.shellExecutionFailed('adb screencap', result.stderr);
   }
 
-  return Buffer.from(result.stdout, 'binary');
+  return result.stdout;
 }
 
 /**

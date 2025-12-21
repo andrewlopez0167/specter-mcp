@@ -128,7 +128,12 @@ export async function runMaestroFlow(options: MaestroRunOptions): Promise<FlowRe
     steps.push(step);
   }
 
-  const success = result.exitCode === 0 && failedAtStep === -1;
+  // Consider it a failure if:
+  // - Exit code is non-zero
+  // - Any step failed
+  // - No steps were detected (parsing failed or empty flow)
+  const noStepsDetected = steps.length === 0;
+  const success = result.exitCode === 0 && failedAtStep === -1 && !noStepsDetected;
 
   return {
     flowName,
@@ -139,7 +144,9 @@ export async function runMaestroFlow(options: MaestroRunOptions): Promise<FlowRe
     failedAtStep,
     durationMs,
     steps,
-    error: !success ? (result.stderr || 'Flow execution failed') : undefined,
+    error: !success
+      ? (noStepsDetected ? 'No steps detected - flow may have failed to parse or run' : (result.stderr || 'Flow execution failed'))
+      : undefined,
   };
 }
 

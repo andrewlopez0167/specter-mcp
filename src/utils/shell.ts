@@ -11,6 +11,12 @@ export interface ShellResult {
   exitCode: number;
 }
 
+export interface BinaryShellResult {
+  stdout: Buffer;
+  stderr: string;
+  exitCode: number;
+}
+
 export interface ShellOptions {
   timeoutMs?: number;
   cwd?: string;
@@ -91,6 +97,65 @@ export async function executeShell(
         stdout: stdout.trim(),
         stderr: stderr.trim(),
         exitCode,
+      });
+    });
+  });
+}
+
+/**
+ * Execute a shell command returning binary stdout (for screenshots, etc.)
+ */
+export async function executeShellBinary(
+  command: string,
+  args: string[] = [],
+  options: ShellOptions = {}
+): Promise<BinaryShellResult> {
+  const { timeoutMs = DEFAULTS.SHELL_TIMEOUT_MS, cwd, env } = options;
+
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    let stderr = '';
+    let killed = false;
+
+    const spawnOptions: SpawnOptions = {
+      cwd,
+      env: { ...process.env, ...env },
+      shell: false,
+    };
+
+    const child = spawn(command, args, spawnOptions);
+
+    const timeout = setTimeout(() => {
+      killed = true;
+      child.kill('SIGTERM');
+      setTimeout(() => {
+        if (!child.killed) child.kill('SIGKILL');
+      }, 1000);
+    }, timeoutMs);
+
+    child.stdout?.on('data', (data: Buffer) => {
+      chunks.push(data);
+    });
+
+    child.stderr?.on('data', (data: Buffer) => {
+      stderr += data.toString();
+    });
+
+    child.on('error', (error: Error) => {
+      clearTimeout(timeout);
+      reject(Errors.shellExecutionFailed(`${command} ${args.join(' ')}`, error.message));
+    });
+
+    child.on('close', (code: number | null) => {
+      clearTimeout(timeout);
+      if (killed) {
+        reject(Errors.timeout(`${command} ${args.join(' ')}`, timeoutMs));
+        return;
+      }
+      resolve({
+        stdout: Buffer.concat(chunks),
+        stderr: stderr.trim(),
+        exitCode: code ?? 1,
       });
     });
   });

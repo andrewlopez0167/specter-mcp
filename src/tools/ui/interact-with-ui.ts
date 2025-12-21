@@ -240,10 +240,12 @@ async function performAndroidInteraction(
 
 /**
  * Perform iOS UI interaction
+ * Note: iOS simulator doesn't support direct touch input via simctl.
+ * For UI automation, use Maestro (run_maestro_flow) instead.
  */
 async function performIOSInteraction(
   action: InteractionType,
-  coords: Point,
+  _coords: Point, // Coords unused - iOS simctl doesn't support coordinate-based touch
   options: {
     text?: string;
     direction?: SwipeDirection;
@@ -251,8 +253,7 @@ async function performIOSInteraction(
     device?: string;
   }
 ): Promise<void> {
-  // Note: durationMs is in options but iOS simctl doesn't support duration
-  const { text, direction, device } = options;
+  const { text, device } = options;
 
   // Get target device UDID
   let udid: string;
@@ -271,77 +272,44 @@ async function performIOSInteraction(
     udid = booted.id;
   }
 
-  // iOS interactions using simctl io
+  // iOS simctl doesn't support direct touch interactions (tap, swipe, long_press)
+  // For these, use Maestro via run_maestro_flow tool instead
   switch (action) {
     case 'tap':
-      await executeShell('xcrun', [
-        'simctl',
-        'io',
-        udid,
-        'send',
-        'tap',
-        String(coords.x),
-        String(coords.y),
-      ]);
-      break;
-
     case 'long_press':
-      // iOS doesn't have direct long press via simctl
-      // Would need AppleScript or XCTest
-      console.warn('[interact_with_ui] Long press on iOS requires XCTest');
-      break;
-
     case 'swipe':
-      if (!direction) {
-        throw Errors.invalidArguments('direction is required for swipe action');
-      }
-      const swipeCoords = calculateSwipeCoordinates(coords, direction, 500);
-      await executeShell('xcrun', [
-        'simctl',
-        'io',
-        udid,
-        'send',
-        'swipe',
-        String(swipeCoords.startX),
-        String(swipeCoords.startY),
-        String(swipeCoords.endX),
-        String(swipeCoords.endY),
-      ]);
-      break;
+      throw Errors.invalidArguments(
+        `iOS simulator doesn't support direct ${action} via simctl. ` +
+        `Use run_maestro_flow tool for iOS UI automation instead.`
+      );
 
     case 'input_text':
       if (!text) {
         throw Errors.invalidArguments('text is required for input_text action');
       }
-      // Type text using simctl
-      await executeShell('xcrun', [
-        'simctl',
-        'io',
-        udid,
-        'send',
-        'keyboard',
-        'typing',
-        text,
+      // Use pbcopy + paste simulation via AppleScript
+      // First copy text to clipboard
+      await executeShell('bash', ['-c', `echo -n "${text.replace(/"/g, '\\"')}" | pbcopy`]);
+      // Then paste via simctl (paste from host clipboard to simulator)
+      await executeShell('xcrun', ['simctl', 'pbsync', udid, 'host']);
+      // Trigger paste via keyboard shortcut using AppleScript
+      await executeShell('osascript', [
+        '-e',
+        'tell application "Simulator" to activate',
+        '-e',
+        'tell application "System Events" to keystroke "v" using command down',
       ]);
       break;
 
     case 'clear':
-      // Select all and delete on iOS
-      await executeShell('xcrun', [
-        'simctl',
-        'io',
-        udid,
-        'send',
-        'keyboard',
-        'select-all',
-      ]);
-      await executeShell('xcrun', [
-        'simctl',
-        'io',
-        udid,
-        'send',
-        'keyboard',
-        'delete',
+      // Select all and delete via AppleScript
+      await executeShell('osascript', [
+        '-e',
+        'tell application "Simulator" to activate',
+        '-e',
+        'tell application "System Events" to keystroke "a" using command down',
+        '-e',
+        'tell application "System Events" to key code 51', // Delete key
       ]);
       break;
   }

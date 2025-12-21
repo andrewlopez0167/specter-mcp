@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 vi.mock('../../../src/utils/shell.js', () => ({
   executeShell: vi.fn(),
   executeShellOrThrow: vi.fn(),
+  executeShellBinary: vi.fn(),
   commandExists: vi.fn(),
   parseLines: (output: string) =>
     output
@@ -12,7 +13,7 @@ vi.mock('../../../src/utils/shell.js', () => ({
       .filter((line) => line.length > 0),
 }));
 
-import { executeShell, executeShellOrThrow, commandExists } from '../../../src/utils/shell.js';
+import { executeShell, executeShellOrThrow, executeShellBinary, commandExists } from '../../../src/utils/shell.js';
 import {
   isAdbAvailable,
   listDevices,
@@ -34,6 +35,7 @@ import {
 
 const mockedExecuteShell = vi.mocked(executeShell);
 const mockedExecuteShellOrThrow = vi.mocked(executeShellOrThrow);
+const mockedExecuteShellBinary = vi.mocked(executeShellBinary);
 const mockedCommandExists = vi.mocked(commandExists);
 
 describe('Android ADB wrapper', () => {
@@ -242,9 +244,9 @@ emulator-5554\tdevice product:sdk model:Pixel_7 device:emu`,
 
   describe('takeScreenshot', () => {
     it('should capture screenshot from device', async () => {
-      const mockPngData = Buffer.from('mock-png-data', 'binary');
-      mockedExecuteShell.mockResolvedValue({
-        stdout: mockPngData.toString('binary'),
+      const mockPngData = Buffer.from('mock-png-data');
+      mockedExecuteShellBinary.mockResolvedValue({
+        stdout: mockPngData,
         stderr: '',
         exitCode: 0,
       });
@@ -252,7 +254,7 @@ emulator-5554\tdevice product:sdk model:Pixel_7 device:emu`,
       const screenshot = await takeScreenshot('emulator-5554');
 
       expect(screenshot).toBeInstanceOf(Buffer);
-      expect(mockedExecuteShell).toHaveBeenCalledWith('adb', [
+      expect(mockedExecuteShellBinary).toHaveBeenCalledWith('adb', [
         '-s',
         'emulator-5554',
         'exec-out',
@@ -262,15 +264,15 @@ emulator-5554\tdevice product:sdk model:Pixel_7 device:emu`,
     });
 
     it('should work without device ID (first available)', async () => {
-      mockedExecuteShell.mockResolvedValue({
-        stdout: 'png-data',
+      mockedExecuteShellBinary.mockResolvedValue({
+        stdout: Buffer.from('png-data'),
         stderr: '',
         exitCode: 0,
       });
 
       await takeScreenshot();
 
-      expect(mockedExecuteShell).toHaveBeenCalledWith('adb', [
+      expect(mockedExecuteShellBinary).toHaveBeenCalledWith('adb', [
         'exec-out',
         'screencap',
         '-p',
@@ -278,8 +280,8 @@ emulator-5554\tdevice product:sdk model:Pixel_7 device:emu`,
     });
 
     it('should throw on screencap failure', async () => {
-      mockedExecuteShell.mockResolvedValue({
-        stdout: '',
+      mockedExecuteShellBinary.mockResolvedValue({
+        stdout: Buffer.from(''),
         stderr: 'error: no devices/emulators found',
         exitCode: 1,
       });

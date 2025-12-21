@@ -919,6 +919,76 @@ describe('Integration Tests - MCP Tools with Test App', () => {
 
       console.log('Crash analysis returned all expected fields');
     }, 30000);
+
+    it('should trigger real crash and detect it in logs on Android', async () => {
+      expect(deviceSetup.androidAvailable, 'Test requires Android device but none available').toBe(true);
+
+      const registry = getToolRegistry();
+
+      // 1. Navigate to Debug screen
+      const deepLinkTool = registry.getTool('deep_link_navigate');
+      await deepLinkTool!.handler({
+        platform: 'android',
+        uri: 'specter://debug',
+        packageName: TEST_APP.android.appId,
+        deviceId: deviceSetup.androidDeviceId,
+        waitAfterMs: 1000,
+      });
+
+      // 2. Trigger NullPointerException crash via UI
+      const interactTool = registry.getTool('interact_with_ui');
+      try {
+        await interactTool!.handler({
+          platform: 'android',
+          action: 'tap',
+          element: 'Trigger NullPointerException',
+          device: deviceSetup.androidDeviceId,
+        });
+      } catch {
+        // Expected - app will crash
+      }
+
+      // 3. Wait for crash to complete
+      await new Promise(resolve => setTimeout(resolve, 3000));
+
+      // 4. Relaunch app
+      const launchTool = registry.getTool('launch_app');
+      await launchTool!.handler({
+        platform: 'android',
+        appId: TEST_APP.android.appId,
+        device: deviceSetup.androidDeviceId,
+      });
+
+      // 5. Analyze crash logs
+      const crashTool = registry.getTool('analyze_crash');
+      const result = await crashTool!.handler({
+        platform: 'android',
+        appId: TEST_APP.android.appId,
+        deviceId: deviceSetup.androidDeviceId,
+        timeRangeSeconds: 120,
+      }) as {
+        success: boolean;
+        deviceLogs?: {
+          totalEntries: number;
+          errorCount: number;
+          crashIndicators: unknown[];
+          keyErrors: string[];
+        }
+      };
+
+      expect(result.success).toBe(true);
+      expect(result.deviceLogs).toBeDefined();
+
+      // Should detect crash-related errors
+      const hasNullPointer = result.deviceLogs?.keyErrors.some(
+        (err: string) => err.includes('NullPointer') || err.includes('FATAL') || err.includes('crash')
+      );
+
+      console.log(`Crash analysis after real crash: ${result.deviceLogs?.errorCount} errors, crash detected: ${hasNullPointer}`);
+
+      // At minimum we should see error logs
+      expect(result.deviceLogs!.errorCount).toBeGreaterThan(0);
+    }, 90000);
   });
 
   describe('Error Handling', () => {

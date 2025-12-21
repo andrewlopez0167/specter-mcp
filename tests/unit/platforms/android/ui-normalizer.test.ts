@@ -130,7 +130,9 @@ describe('Android UI Normalizer', () => {
     });
 
     it('should continue without screenshot on capture failure', async () => {
-      // Console output is silenced globally via tests/setup.ts
+      // Silence expected console.error from error handling code
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
       mockedListDevices.mockResolvedValue([
         { id: 'emulator-5554', name: 'Pixel_7', status: 'booted' },
       ]);
@@ -143,6 +145,13 @@ describe('Android UI Normalizer', () => {
 
       // Should not throw, should use empty screenshot
       expect(context.screenshot).toBeDefined();
+      // Verify error was logged (shows graceful handling)
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[android-ui] Screenshot capture failed'),
+        expect.any(Error)
+      );
+
+      consoleErrorSpy.mockRestore();
     });
 
     it('should apply screenshot quality option', async () => {
