@@ -4,28 +4,15 @@
 
 **ALWAYS use the `AskUserQuestion` tool when presenting questions or options to the user.** Do not ask questions inline in text responses. The AskUserQuestion tool provides a better UX with structured options.
 
-## Specter MCP - Design Decisions
-
-### Access & Security
-- No authentication required - Claude AI or users call directly on trusted local machine
-
-### Concurrency
-- Queue requests and execute sequentially to prevent resource conflicts (no parallel tool execution)
-
-### Error Handling
-- When a requested device/emulator doesn't exist: Return error plus list of available devices for agent to choose
-- If configured worker model (e.g., Claude Haiku) is unavailable: Fallback to primary model, accept higher cost
-
-### Timeouts
-- Maximum build timeout: 30 minutes (accommodates complex projects with many dependencies)
-
-### iOS Debugging
-- **Crash log analysis**: Parse .crash/.ips files, symbolicate with dSYM, detect crash patterns
-- **Xcode Instruments**: Out of scope - focus on functional debugging, not performance profiling
-
 ## Project Context
 
-This is the **Specter MCP** project - a KMM (Kotlin Multiplatform Mobile) Diagnostic & Execution Engine that acts as "hands and eyes" for AI agents working with mobile projects.
+**Specter MCP** is a KMM (Kotlin Multiplatform Mobile) Diagnostic & Execution Engine that acts as "hands and eyes" for AI agents working with mobile projects.
+
+### Tech Stack
+- TypeScript 5.x (Node.js 20+)
+- @modelcontextprotocol/sdk
+- sharp (image processing)
+- xml2js (UI hierarchy parsing)
 
 ### Architecture
 - **Primary Agent + Specialized Worker** model
@@ -43,9 +30,21 @@ This is the **Specter MCP** project - a KMM (Kotlin Multiplatform Mobile) Diagno
 5. **Model Routing**: Task dispatching to specialized AI models
 6. **Concurrency & Error Handling**: Sequential queue, device discovery, timeouts
 
-## Active Technologies
-- TypeScript 5.x (Node.js 20+) + @modelcontextprotocol/sdk, sharp (image processing), xml2js (UI hierarchy parsing) (001-specter-mcp)
-- N/A (stateless - reads from device filesystem and shell commands) (001-specter-mcp)
+## Design Decisions
 
-## Recent Changes
-- 001-specter-mcp: Added TypeScript 5.x (Node.js 20+) + @modelcontextprotocol/sdk, sharp (image processing), xml2js (UI hierarchy parsing)
+### Access & Security
+- No authentication required - Claude AI or users call directly on trusted local machine
+
+### Concurrency
+- Queue requests and execute sequentially to prevent resource conflicts (no parallel tool execution)
+
+### Error Handling
+- When a requested device/emulator doesn't exist: Return error plus list of available devices for agent to choose
+- If configured worker model (e.g., Claude Haiku) is unavailable: Fallback to primary model, accept higher cost
+
+### Timeouts
+- Maximum build timeout: 30 minutes (accommodates complex projects with many dependencies)
+
+### iOS Debugging
+- **Crash log analysis**: Parse .crash/.ips files, symbolicate with dSYM, detect crash patterns
+- **Xcode Instruments**: Out of scope - focus on functional debugging, not performance profiling
